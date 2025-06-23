@@ -8,24 +8,23 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"time"
 )
 
 type DirtyPost struct {
 	Id            int        `json:"id" bson:"_id"`
 	Title         string     `json:"title"`
 	Text          string     `json:"-" bson:"text"`
-	CreatedDate   time.Time  `json:"created_date" bson:"created_date"`
-	ChangedDate   time.Time  `json:"changed_date" bson:"changed_date"`
+	CreatedDate   EpochTime  `json:"created" bson:"created"`
+	ChangedDate   EpochTime  `json:"changed" bson:"changed"`
 	CommentsCount int        `json:"comments_count" bson:"comments_count"`
 	Rating        int        `json:"rating" bson:"rating"`
 	IsGolden      bool       `json:"golden" bson:"golden"`
 	IsPinned      bool       `json:"pinned" bson:"pinned"`
 	Image         string     `json:"main_image_url" bson:"main_image_url"`
 	UserId        int        `bson:"user_id"`
-	User          *DirtyUser `json:"user" bson:"user"`
-	Link          string     `json:"link" bson:"link"`
-	UrlSlug       string     `json:"url_slug" bson:"url_slug"`
+	User          *DirtyUser `json:"user" bson:"-,omitempty"`
+	Link          string     `bson:"link"`
+	UrlSlug       string     `json:"url_slug" bson:"url_slug,omitempty"`
 	Tags          []string   `json:"tags" bson:"tags"`
 }
 
@@ -88,6 +87,10 @@ func (p *DirtyPost) UnmarshalJSON(data []byte) error {
 		Data struct {
 			Text string `json:"text"`
 		} `json:"data"`
+		Links []struct {
+			Href string `json:"href"`
+			Rel  string `json:"rel"`
+		} `json:"_links"`
 	}
 
 	if err := json.Unmarshal(data, &tmp); err != nil {
@@ -101,5 +104,13 @@ func (p *DirtyPost) UnmarshalJSON(data []byte) error {
 	} else {
 		p.Text = tmp.Data.Text
 	}
+
+	for _, l := range tmp.Links {
+		if l.Rel == "html" {
+			p.Link = l.Href
+			break
+		}
+	}
+
 	return nil
 }

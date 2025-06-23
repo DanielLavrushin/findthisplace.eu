@@ -2,13 +2,22 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch grabber",
+      "name": "Launch grabber: Full",
       "type": "go",
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}/grabber/cmd",
       "env": {},
       "args": ["--full-run"]
+    },
+    {
+      "name": "Launch grabber: Partial",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/grabber/cmd",
+      "env": {},
+      "args": []
     }
   ]
 }

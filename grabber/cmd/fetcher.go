@@ -46,7 +46,7 @@ func Run(ctx context.Context, fullRun *bool) (*Result, error) {
 	processBatch(ctx, first.Posts, res)
 
 	for page := 2; page <= totalPages; page++ {
-		log.Printf("Fetching page %d", page)
+		log.Printf("Fetching page %d/%d", page, totalPages)
 
 		batch, err := postApi.GetPosts(ctx, page, perPage)
 		if err != nil {
