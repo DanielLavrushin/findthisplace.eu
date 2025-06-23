@@ -22,7 +22,7 @@ func main() {
 
 	db, err := db.Connect(ctx,
 		"mongodb://grabber_admin:superSecret123@localhost:27017",
-		"findthisplace.eu",
+		"findthisplace",
 	)
 
 	if err != nil {
