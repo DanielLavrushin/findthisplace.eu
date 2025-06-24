@@ -18,6 +18,15 @@
       "program": "${workspaceFolder}/grabber/cmd",
       "env": {},
       "args": []
+    },
+    {
+      "name": "Launch grabber: Process Only",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/grabber/cmd",
+      "env": {},
+      "args": ["--skip-load"]
     }
   ]
 }

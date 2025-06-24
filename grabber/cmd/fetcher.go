@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 
+	"github.com/findthisplace.eu/grabber/db"
 	"github.com/findthisplace.eu/grabber/dirty"
 )
 
@@ -13,7 +14,7 @@ type Result struct {
 	Users    map[int]*dirty.DirtyUser
 }
 
-func Run(ctx context.Context, fullRun *bool) (*Result, error) {
+func Run(ctx context.Context, fullRun *bool, store *db.DB) (*Result, error) {
 
 	log.Printf("Starting Dirty API fetcher...")
 
@@ -39,8 +40,8 @@ func Run(ctx context.Context, fullRun *bool) (*Result, error) {
 
 	res := &Result{
 		Posts:    make([]dirty.DirtyPost, 0, first.PostsTotal),
-		Comments: make([]dirty.DirtyComment, 0, 10000),
-		Users:    make(map[int]*dirty.DirtyUser, 1000),
+		Comments: make([]dirty.DirtyComment, 0, 80000),
+		Users:    make(map[int]*dirty.DirtyUser, 6000),
 	}
 
 	processBatch(ctx, first.Posts, res)
@@ -58,24 +59,26 @@ func Run(ctx context.Context, fullRun *bool) (*Result, error) {
 		processBatch(ctx, batch.Posts, res)
 	}
 
+	if err := store.Save(ctx, res.Posts, res.Comments, res.Users); err != nil {
+		log.Fatalf("mongo save: %v", err)
+	}
+
 	return res, nil
 }
 
 func processBatch(ctx context.Context, posts []dirty.DirtyPost, res *Result) {
 	total := len(posts)
-	commentApi := dirty.New(dirty.ApiCommentsEndpoint) // one per batch, not per post
+	commentApi := dirty.New(dirty.ApiCommentsEndpoint)
 
 	for i, post := range posts {
 		log.Printf("Processing post %d/%d (%s)", i+1, total, post.Title)
 
-		// ----- user handling -----
 		if post.User != nil {
 			res.Users[post.User.Id] = cloneUser(post.User)
 			post.UserId = post.User.Id
 			post.User = nil
 		}
 
-		// ----- comments -----
 		cr, err := commentApi.GetComments(ctx, post)
 		if err != nil {
 			log.Printf("Comments failed for post %d: %v", post.Id, err)

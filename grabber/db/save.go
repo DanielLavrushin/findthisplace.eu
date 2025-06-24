@@ -11,22 +11,16 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-type Result struct {
-	Posts    []dirty.DirtyPost
-	Comments []dirty.DirtyComment
-	Users    map[int]*dirty.DirtyUser
-}
-
 func (db *DB) Save(ctx context.Context, posts []dirty.DirtyPost, comments []dirty.DirtyComment, users map[int]*dirty.DirtyUser) error {
 	log.Printf("Mongo: saving %d posts, %d comments, %d users", len(posts), len(comments), len(users))
 
 	if err := db.upsertUsers(ctx, users); err != nil {
 		return err
 	}
-	if err := db.upsertMany(ctx, db.Posts, anySlice(posts)); err != nil {
+	if err := db.upsertMany(ctx, db.DirtyPosts, anySlice(posts)); err != nil {
 		return err
 	}
-	if err := db.upsertMany(ctx, db.Comments, anySlice(comments)); err != nil {
+	if err := db.upsertMany(ctx, db.DirtyComments, anySlice(comments)); err != nil {
 		return err
 	}
 	log.Printf("Mongo: wrote %d posts, %d comments, %d users",
@@ -49,7 +43,7 @@ func (db *DB) upsertUsers(ctx context.Context, users map[int]*dirty.DirtyUser) e
 				SetUpdate(update).
 				SetUpsert(true))
 	}
-	_, err := db.Users.BulkWrite(ctx, models, options.BulkWrite().SetOrdered(false))
+	_, err := db.DirtyUsers.BulkWrite(ctx, models, options.BulkWrite().SetOrdered(false))
 	return err
 }
 
