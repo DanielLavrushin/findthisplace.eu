@@ -8,3 +8,5 @@ coverage.*
 profile.cov
 
 __debug_bin*
+
+node_modules/
