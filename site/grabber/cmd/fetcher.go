@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 
-	"github.com/findthisplace.eu/grabber/db"
-	"github.com/findthisplace.eu/grabber/dirty"
+	"github.com/findthisplace.eu/db"
+	"github.com/findthisplace.eu/dirty"
 )
 
 type Result struct {

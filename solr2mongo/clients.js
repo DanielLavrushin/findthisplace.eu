@@ -9,7 +9,9 @@ const SOLR_OPTIONS = {
   protocol: process.env.SOLR_PROTOCOL,
 };
 
-const mongoUri = `mongodb://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@${process.env.MONGO_HOST}`;
+const mongoUri = process.env.MONGO_USERNAME
+  ? `mongodb://${process.env.MONGO_USERNAME}:${process.env.MONGO_PASSWORD}@${process.env.MONGO_HOST}`
+  : `mongodb://${process.env.MONGO_HOST}`;
 
 const mongo = new MongoClient(mongoUri);
 const solr = (core) => {

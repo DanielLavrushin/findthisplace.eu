@@ -5,8 +5,8 @@ import (
 	"log"
 	"regexp"
 
-	"github.com/findthisplace.eu/grabber/db"
-	"github.com/findthisplace.eu/grabber/dirty"
+	"github.com/findthisplace.eu/db"
+	"github.com/findthisplace.eu/dirty"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"

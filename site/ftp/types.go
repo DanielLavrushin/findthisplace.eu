@@ -1,9 +1,9 @@
 package ftp
 
-import "github.com/findthisplace.eu/grabber/dirty"
+import "github.com/findthisplace.eu/dirty"
 
 type FtpPost struct {
-	Id        int             `bson:"_id"`
+	Id        int             `json:"id" bson:"_id"`
 	IsFound   bool            `bson:"is_found"`
 	Longitude float64         `bson:"longitude,omitempty"`
 	Latitude  float64         `bson:"latitude,omitempty"`

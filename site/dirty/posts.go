@@ -10,24 +10,6 @@ import (
 	"strconv"
 )
 
-type DirtyPost struct {
-	Id            int        `json:"id" bson:"_id"`
-	Title         string     `json:"title"`
-	Text          string     `json:"-" bson:"text"`
-	CreatedDate   EpochTime  `json:"created" bson:"created"`
-	ChangedDate   EpochTime  `json:"changed" bson:"changed"`
-	CommentsCount int        `json:"comments_count" bson:"comments_count"`
-	Rating        int        `json:"rating" bson:"rating"`
-	IsGolden      bool       `json:"golden" bson:"golden"`
-	IsPinned      bool       `json:"pinned" bson:"pinned"`
-	Image         string     `json:"main_image_url" bson:"main_image_url"`
-	UserId        int        `bson:"user_id"`
-	User          *DirtyUser `json:"user" bson:"-,omitempty"`
-	Link          string     `bson:"link"`
-	UrlSlug       string     `json:"url_slug" bson:"url_slug,omitempty"`
-	Tags          []string   `json:"tags" bson:"tags"`
-}
-
 type DirtyPostAlias DirtyPost
 
 type PageResponse struct {

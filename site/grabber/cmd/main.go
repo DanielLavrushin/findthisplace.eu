@@ -5,8 +5,8 @@ import (
 	"flag"
 	"log"
 
-	"github.com/findthisplace.eu/grabber/db"
-	"github.com/findthisplace.eu/grabber/ftp"
+	"github.com/findthisplace.eu/db"
+	"github.com/findthisplace.eu/ftp"
 	"github.com/joho/godotenv"
 )
 

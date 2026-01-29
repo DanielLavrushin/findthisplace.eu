@@ -1,15 +1,11 @@
 services:
   ftp-mongodb:
-    image: mongo:8.0  
+    image: mongo:8.0
     container_name: grabber-mongodb
     restart: unless-stopped
 
     ports:
-      - "${FTP_DB_PORT}:27017"
-
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${FTP_DB_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${FTP_DB_PASSWORD}
+      - "27017:27017"
 
     volumes:
       - mongo-data:/data/db
