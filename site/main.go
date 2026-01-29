@@ -12,6 +12,7 @@ import (
 
 	"github.com/findthisplace.eu/config"
 	"github.com/findthisplace.eu/db"
+	"github.com/findthisplace.eu/grabber"
 	ftphttp "github.com/findthisplace.eu/http"
 	"github.com/findthisplace.eu/settings"
 )
@@ -33,6 +34,10 @@ func main() {
 
 	sm := settings.NewManager(store.FtpSettings)
 
+	grabberCtx, grabberCancel := context.WithCancel(ctx)
+	defer grabberCancel()
+	grabber.StartBackground(grabberCtx, store, sm)
+
 	cfg := &config.Config{
 		Port: port,
 	}
@@ -50,10 +55,12 @@ func main() {
 
 	fmt.Println("shutting down server...")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
+	grabberCancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer shutdownCancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Fatalf("server forced to shutdown: %v", err)
 	}
 

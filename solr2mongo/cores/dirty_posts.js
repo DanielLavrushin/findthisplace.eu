@@ -29,6 +29,10 @@ const migrate = async () => {
       d._id = Number(d.id) || d.id;
       delete d.id;
 
+      if (d.user_id != null) {
+        d.user_id = Number(d.user_id) || d.user_id;
+      }
+
       delete d.version;
       delete d._version_;
 

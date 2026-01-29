@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -29,9 +30,16 @@ func Get[T any](ctx context.Context, m *Manager, name string) (T, error) {
 	var setting Setting
 	var zero T
 
-	err := m.coll.FindOne(ctx, bson.M{"name": name}).Decode(&setting)
+	err := m.coll.FindOne(ctx, bson.M{"_id": name}).Decode(&setting)
 	if err != nil {
 		return zero, fmt.Errorf("setting %q: %w", name, err)
+	}
+
+	if dt, ok := setting.Value.(primitive.DateTime); ok {
+		var converted interface{} = dt.Time()
+		if val, ok := converted.(T); ok {
+			return val, nil
+		}
 	}
 
 	val, ok := setting.Value.(T)
@@ -42,7 +50,7 @@ func Get[T any](ctx context.Context, m *Manager, name string) (T, error) {
 }
 
 func Set(ctx context.Context, m *Manager, name string, value interface{}) error {
-	filter := bson.M{"name": name}
+	filter := bson.M{"_id": name}
 	update := bson.M{"$set": bson.M{"value": value}}
 	opts := options.Update().SetUpsert(true)
 

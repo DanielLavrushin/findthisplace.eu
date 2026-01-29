@@ -2,6 +2,7 @@ package grabber
 
 import (
 	"context"
+	"fmt"
 	"log"
 
 	"github.com/findthisplace.eu/db"
@@ -40,8 +41,8 @@ func Run(ctx context.Context, fullRun *bool, store *db.DB) (*Result, error) {
 
 	res := &Result{
 		Posts:    make([]dirty.DirtyPost, 0, first.PostsTotal),
-		Comments: make([]dirty.DirtyComment, 0, 80000),
-		Users:    make(map[int]*dirty.DirtyUser, 6000),
+		Comments: make([]dirty.DirtyComment, 0, 90000),
+		Users:    make(map[int]*dirty.DirtyUser, 9000),
 	}
 
 	processBatch(ctx, first.Posts, res)
@@ -60,7 +61,7 @@ func Run(ctx context.Context, fullRun *bool, store *db.DB) (*Result, error) {
 	}
 
 	if err := store.Save(ctx, res.Posts, res.Comments, res.Users); err != nil {
-		log.Fatalf("mongo save: %v", err)
+		return nil, fmt.Errorf("mongo save: %w", err)
 	}
 
 	return res, nil
