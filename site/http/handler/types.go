@@ -4,9 +4,11 @@ import (
 	"net/http"
 
 	"github.com/findthisplace.eu/config"
+	"github.com/findthisplace.eu/settings"
 )
 
 type API struct {
-	cfg *config.Config
-	mux *http.ServeMux
+	cfg      *config.Config
+	mux      *http.ServeMux
+	settings *settings.Manager
 }

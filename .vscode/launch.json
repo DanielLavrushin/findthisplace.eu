@@ -2,7 +2,19 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch grabber: Full",
+      "name": "site",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/site",
+      "env": {
+        "FTP_DB_ADDRESS": "localhost",
+        "FTP_DB_PORT": "27017"
+      },
+      "args": ["--port", "8080"]
+    },
+    {
+      "name": "grabber: Full",
       "type": "go",
       "request": "launch",
       "mode": "auto",
@@ -11,7 +23,7 @@
       "args": ["--full-run"]
     },
     {
-      "name": "Launch grabber: Partial",
+      "name": "Laun grabber: Partial",
       "type": "go",
       "request": "launch",
       "mode": "auto",
@@ -20,7 +32,7 @@
       "args": []
     },
     {
-      "name": "Launch grabber: Process Only",
+      "name": "grabber: Process Only",
       "type": "go",
       "request": "launch",
       "mode": "auto",

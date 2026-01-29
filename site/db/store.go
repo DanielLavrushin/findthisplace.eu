@@ -19,15 +19,22 @@ type DB struct {
 	FtpPosts      *mongo.Collection
 	FtpComments   *mongo.Collection
 	FtpUsers      *mongo.Collection
+	FtpSettings   *mongo.Collection
 }
 
 func Connect(ctx context.Context, dbName string) (*DB, error) {
 
-	uri := fmt.Sprintf("mongodb://%s:%s@%s:%s",
-		os.Getenv("FTP_DB_USERNAME"),
-		os.Getenv("FTP_DB_PASSWORD"),
-		os.Getenv("FTP_DB_ADDRESS"),
-		os.Getenv("FTP_DB_PORT"))
+	host := os.Getenv("FTP_DB_ADDRESS")
+	port := os.Getenv("FTP_DB_PORT")
+	user := os.Getenv("FTP_DB_USERNAME")
+	pass := os.Getenv("FTP_DB_PASSWORD")
+
+	var uri string
+	if user != "" && pass != "" {
+		uri = fmt.Sprintf("mongodb://%s:%s@%s:%s", user, pass, host, port)
+	} else {
+		uri = fmt.Sprintf("mongodb://%s:%s", host, port)
+	}
 
 	log.Printf("Connecting to MongoDB database %s", dbName)
 
@@ -48,5 +55,6 @@ func Connect(ctx context.Context, dbName string) (*DB, error) {
 		FtpPosts:      db.Collection("ftp_posts"),
 		FtpComments:   db.Collection("ftp_comments"),
 		FtpUsers:      db.Collection("ftp_users"),
+		FtpSettings:   db.Collection("ftp_settings"),
 	}, nil
 }

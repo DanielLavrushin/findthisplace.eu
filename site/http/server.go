@@ -9,17 +9,18 @@ import (
 
 	"github.com/findthisplace.eu/config"
 	"github.com/findthisplace.eu/http/handler"
+	"github.com/findthisplace.eu/settings"
 )
 
 //go:embed ui/dist/*
 var uiDist embed.FS
 
-func StartServer(cfg *config.Config) (*stdhttp.Server, error) {
+func StartServer(cfg *config.Config, sm *settings.Manager) (*stdhttp.Server, error) {
 
 	mux := stdhttp.NewServeMux()
 
 	registerWebSocketEndpoints(mux)
-	registerAPIEndpoints(mux, cfg)
+	registerAPIEndpoints(mux, cfg, sm)
 
 	handler.RegisterSpa(mux, uiDist)
 
@@ -51,9 +52,9 @@ func StartServer(cfg *config.Config) (*stdhttp.Server, error) {
 func registerWebSocketEndpoints(mux *stdhttp.ServeMux) {
 }
 
-func registerAPIEndpoints(mux *stdhttp.ServeMux, cfg *config.Config) {
+func registerAPIEndpoints(mux *stdhttp.ServeMux, cfg *config.Config, sm *settings.Manager) {
 
-	api := handler.NewAPIHandler(cfg)
+	api := handler.NewAPIHandler(cfg, sm)
 	api.RegisterEndpoints(mux, cfg)
 
 }

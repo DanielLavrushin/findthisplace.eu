@@ -4,12 +4,14 @@ import (
 	"net/http"
 
 	"github.com/findthisplace.eu/config"
+	"github.com/findthisplace.eu/settings"
 )
 
-func NewAPIHandler(cfg *config.Config) *API {
+func NewAPIHandler(cfg *config.Config, sm *settings.Manager) *API {
 
 	return &API{
-		cfg: cfg,
+		cfg:      cfg,
+		settings: sm,
 	}
 }
 
@@ -21,5 +23,7 @@ func (api *API) RegisterEndpoints(mux *http.ServeMux, cfg *config.Config) {
 
 	api.cfg = cfg
 	api.mux = mux
+
+	api.RegisterSettingsApi()
 
 }
