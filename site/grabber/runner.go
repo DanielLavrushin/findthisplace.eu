@@ -46,15 +46,20 @@ func runIfNeeded(ctx context.Context, store *db.DB, sm *settings.Manager) {
 	log.Println("[grabber] starting run")
 	fullRun := false
 
-	_, err = Run(ctx, &fullRun, store)
+	result, err := Run(ctx, &fullRun, store)
 	if err != nil {
 		log.Printf("[grabber] run failed: %v", err)
 		setStatus(ctx, sm, "fail")
 		return
 	}
 
+	postIDs := make([]int, len(result.Posts))
+	for i, p := range result.Posts {
+		postIDs[i] = p.Id
+	}
+
 	log.Println("[grabber] starting ftp processing")
-	if err := ftp.Process(ctx, store); err != nil {
+	if err := ftp.Process(ctx, store, postIDs); err != nil {
 		log.Printf("[grabber] ftp processing failed: %v", err)
 		setStatus(ctx, sm, "fail")
 		return
