@@ -15,7 +15,26 @@ import (
 var foundTag = regexp.MustCompile(`(?i)\[НАЙДЕНО]`)
 
 func Process(ctx context.Context, store *db.DB, postIDs []int) error {
+	if err := processComments(ctx, store, postIDs); err != nil {
+		return err
+	}
+	log.Println("ftp.Process: comments completed")
+
+	if err := processPosts(ctx, store, postIDs); err != nil {
+		return err
+	}
+
+	log.Println("ftp.Process: completed")
+	return nil
+}
+
+func processPosts(ctx context.Context, store *db.DB, postIDs []int) error {
 	topCommentByPost, err := loadTopComments(ctx, store, postIDs)
+	if err != nil {
+		return err
+	}
+
+	coordsByPost, err := loadCommentCoords(ctx, store, postIDs)
 	if err != nil {
 		return err
 	}
@@ -44,6 +63,10 @@ func Process(ctx context.Context, store *db.DB, postIDs []int) error {
 			if userId, ok := topCommentByPost[dp.Id]; ok {
 				fp.FoundById = userId
 			}
+			if c, ok := coordsByPost[dp.Id]; ok {
+				fp.Latitude = c.Lat
+				fp.Longitude = c.Lng
+			}
 		}
 
 		model := mongo.NewReplaceOneModel().
@@ -66,19 +89,16 @@ func Process(ctx context.Context, store *db.DB, postIDs []int) error {
 		}
 		log.Printf("Updated %d posts to the database", len(bulk))
 	}
-	log.Println("ftp.Process: posts completed")
-
-	if err := processComments(ctx, store, postIDs); err != nil {
-		return err
-	}
-
-	log.Println("ftp.Process: completed")
 	return cur.Err()
 }
 
 func processComments(ctx context.Context, store *db.DB, postIDs []int) error {
-	// Load IDs of ftp_comments that already have coordinates extracted
-	existing, err := loadExtractedCommentIDs(ctx, store, postIDs)
+	commentIDs, err := loadCommentIDs(ctx, store, postIDs)
+	if err != nil {
+		return err
+	}
+
+	existing, err := loadExtractedCommentIDs(ctx, store, commentIDs)
 	if err != nil {
 		return err
 	}
@@ -102,8 +122,7 @@ func processComments(ctx context.Context, store *db.DB, postIDs []int) error {
 		}
 
 		fc := &FtpComment{
-			Id:     dc.Id,
-			PostId: dc.PostId,
+			Id: dc.Id,
 		}
 
 		if c := ExtractCoords(dc.Text); c != nil {
@@ -135,9 +154,71 @@ func processComments(ctx context.Context, store *db.DB, postIDs []int) error {
 	return cur.Err()
 }
 
-func loadExtractedCommentIDs(ctx context.Context, store *db.DB, postIDs []int) (map[int]bool, error) {
+func loadCommentIDs(ctx context.Context, store *db.DB, postIDs []int) ([]int, error) {
+	cur, err := store.DirtyComments.Find(ctx,
+		bson.M{"post_id": bson.M{"$in": postIDs}},
+		options.Find().SetProjection(bson.M{"_id": 1}))
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close(ctx)
+
+	var ids []int
+	for cur.Next(ctx) {
+		var row struct {
+			Id int `bson:"_id"`
+		}
+		if err := cur.Decode(&row); err != nil {
+			return nil, err
+		}
+		ids = append(ids, row.Id)
+	}
+	return ids, cur.Err()
+}
+
+func loadCommentCoords(ctx context.Context, store *db.DB, postIDs []int) (map[int]coords, error) {
+	pipeline := mongo.Pipeline{
+		{{Key: "$match", Value: bson.M{"post_id": bson.M{"$in": postIDs}}}},
+		{{Key: "$lookup", Value: bson.D{
+			{Key: "from", Value: "ftp_comments"},
+			{Key: "localField", Value: "_id"},
+			{Key: "foreignField", Value: "_id"},
+			{Key: "as", Value: "ftp"},
+		}}},
+		{{Key: "$unwind", Value: "$ftp"}},
+		{{Key: "$match", Value: bson.M{"ftp.extracted": true}}},
+		{{Key: "$sort", Value: bson.D{{Key: "rating", Value: -1}}}},
+		{{Key: "$group", Value: bson.D{
+			{Key: "_id", Value: "$post_id"},
+			{Key: "lat", Value: bson.M{"$first": "$ftp.latitude"}},
+			{Key: "lng", Value: bson.M{"$first": "$ftp.longitude"}},
+		}}},
+	}
+
+	cur, err := store.DirtyComments.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cur.Close(ctx)
+
+	result := make(map[int]coords)
+	for cur.Next(ctx) {
+		var row struct {
+			PostId int     `bson:"_id"`
+			Lat    float64 `bson:"lat"`
+			Lng    float64 `bson:"lng"`
+		}
+		if err := cur.Decode(&row); err != nil {
+			return nil, err
+		}
+		result[row.PostId] = coords{Lat: row.Lat, Lng: row.Lng}
+	}
+	return result, cur.Err()
+}
+
+func loadExtractedCommentIDs(ctx context.Context, store *db.DB, commentIDs []int) (map[int]bool, error) {
 	cur, err := store.FtpComments.Find(ctx,
-		bson.M{"post_id": bson.M{"$in": postIDs}, "extracted": true},
+		bson.M{"_id": bson.M{"$in": commentIDs}, "extracted": true},
 		options.Find().SetProjection(bson.M{"_id": 1}))
 	if err != nil {
 		return nil, err

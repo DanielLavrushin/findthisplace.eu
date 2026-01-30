@@ -4,7 +4,6 @@ import "github.com/findthisplace.eu/dirty"
 
 type FtpComment struct {
 	Id        int     `json:"id" bson:"_id"`
-	PostId    int     `bson:"post_id"`
 	Extracted bool    `bson:"extracted"`
 	Longitude float64 `bson:"longitude,omitempty"`
 	Latitude  float64 `bson:"latitude,omitempty"`

@@ -1,8 +1,12 @@
 package ftp
 
 import (
+	"log"
+	"net/http"
+	"net/url"
 	"regexp"
 	"strconv"
+	"time"
 )
 
 type coords struct {
@@ -16,10 +20,61 @@ var extractors = []func(string) *coords{
 	extractOSM,
 }
 
+var reShortGoogleURL = regexp.MustCompile(`https?://(?:maps\.app\.goo\.gl|goo\.gl/maps)/[^\s"'<>]+`)
+
+var shortURLClient = &http.Client{
+	Timeout: 10 * time.Second,
+	CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		return http.ErrUseLastResponse
+	},
+}
+
 // ExtractCoords finds the first map URL in text and returns its coordinates.
 func ExtractCoords(text string) *coords {
 	for _, fn := range extractors {
 		if c := fn(text); c != nil {
+			return c
+		}
+	}
+	return resolveShortURL(text)
+}
+
+func resolveShortURL(text string) *coords {
+	shortURL := reShortGoogleURL.FindString(text)
+	if shortURL == "" {
+		return nil
+	}
+
+	resp, err := shortURLClient.Get(shortURL)
+	if err != nil {
+		log.Printf("geo: failed to resolve short URL %s: %v", shortURL, err)
+		return nil
+	}
+	resp.Body.Close()
+
+	location := resp.Header.Get("Location")
+	if location == "" {
+		return nil
+	}
+
+	// Try extracting coords directly from the redirect URL
+	for _, fn := range extractors {
+		if c := fn(location); c != nil {
+			return c
+		}
+	}
+
+	// Consent page: coords are inside the ?continue= parameter
+	parsed, err := url.Parse(location)
+	if err != nil {
+		return nil
+	}
+	continueURL := parsed.Query().Get("continue")
+	if continueURL == "" {
+		return nil
+	}
+	for _, fn := range extractors {
+		if c := fn(continueURL); c != nil {
 			return c
 		}
 	}
