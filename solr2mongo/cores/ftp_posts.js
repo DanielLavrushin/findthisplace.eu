@@ -42,7 +42,7 @@ const migrate = async () => {
       delete d.ChangedDate;
       delete d.CreatedById;
 
-      d.found = d.IsFound;
+      d.is_found = d.IsFound;
       delete d.IsFound;
 
       d.longitude = Number(d.Longitude) || d.Longitude;

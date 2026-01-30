@@ -42,7 +42,7 @@ func main() {
 		Port: port,
 	}
 
-	srv, err := ftphttp.StartServer(cfg, sm)
+	srv, err := ftphttp.StartServer(cfg, sm, store)
 	if err != nil {
 		log.Fatalf("failed to start server: %v", err)
 	}

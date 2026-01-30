@@ -38,8 +38,7 @@ const migrate = async () => {
         delete d.parent_id;
       }
 
-      d.text = d.body;
-      delete d.body;
+
 
       d.post_id = Number(d.post_id);
       d.user_id = Number(d.user_id);

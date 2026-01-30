@@ -60,8 +60,9 @@ func processPosts(ctx context.Context, store *db.DB, postIDs []int) error {
 		}
 
 		if fp.IsFound {
-			if userId, ok := topCommentByPost[dp.Id]; ok {
-				fp.FoundById = userId
+			if tc, ok := topCommentByPost[dp.Id]; ok {
+				fp.FoundById = tc.UserId
+				fp.FoundDate = tc.CreatedAt
 			}
 			if c, ok := coordsByPost[dp.Id]; ok {
 				fp.Latitude = c.Lat
@@ -251,13 +252,19 @@ func writeCommentBulk(ctx context.Context, store *db.DB, ops []mongo.WriteModel)
 	return err
 }
 
-func loadTopComments(ctx context.Context, store *db.DB, postIDs []int) (map[int]int, error) {
+type topComment struct {
+	UserId    int
+	CreatedAt dirty.EpochTime
+}
+
+func loadTopComments(ctx context.Context, store *db.DB, postIDs []int) (map[int]topComment, error) {
 	pipeline := mongo.Pipeline{
 		{{Key: "$match", Value: bson.M{"post_id": bson.M{"$in": postIDs}}}},
 		{{Key: "$sort", Value: bson.D{{Key: "rating", Value: -1}}}},
 		{{Key: "$group", Value: bson.D{
 			{Key: "_id", Value: "$post_id"},
 			{Key: "user_id", Value: bson.M{"$first": "$user_id"}},
+			{Key: "created", Value: bson.M{"$first": "$created"}},
 		}}},
 	}
 
@@ -267,16 +274,17 @@ func loadTopComments(ctx context.Context, store *db.DB, postIDs []int) (map[int]
 	}
 	defer cur.Close(ctx)
 
-	result := make(map[int]int)
+	result := make(map[int]topComment)
 	for cur.Next(ctx) {
 		var row struct {
-			PostId int `bson:"_id"`
-			UserId int `bson:"user_id"`
+			PostId  int             `bson:"_id"`
+			UserId  int             `bson:"user_id"`
+			Created dirty.EpochTime `bson:"created"`
 		}
 		if err := cur.Decode(&row); err != nil {
 			return nil, err
 		}
-		result[row.PostId] = row.UserId
+		result[row.PostId] = topComment{UserId: row.UserId, CreatedAt: row.Created}
 	}
 	return result, cur.Err()
 }

@@ -4,14 +4,16 @@ import (
 	"net/http"
 
 	"github.com/findthisplace.eu/config"
+	"github.com/findthisplace.eu/db"
 	"github.com/findthisplace.eu/settings"
 )
 
-func NewAPIHandler(cfg *config.Config, sm *settings.Manager) *API {
+func NewAPIHandler(cfg *config.Config, sm *settings.Manager, store *db.DB) *API {
 
 	return &API{
 		cfg:      cfg,
 		settings: sm,
+		store:    store,
 	}
 }
 
@@ -25,5 +27,6 @@ func (api *API) RegisterEndpoints(mux *http.ServeMux, cfg *config.Config) {
 	api.mux = mux
 
 	api.RegisterSettingsApi()
+	api.RegisterMapApi()
 
 }
