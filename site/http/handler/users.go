@@ -439,13 +439,17 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 		if v, ok := p["is_found"].(bool); ok {
 			post.IsFound = v
 		}
+		var createdTime time.Time
 		if created, ok := p["created"].(primitive.DateTime); ok {
-			t := created.Time()
-			post.CreatedDate = t.UTC().Format(time.RFC3339)
-			post.Tier = tierFromAge(now.Sub(t).Seconds())
+			createdTime = created.Time()
+			post.CreatedDate = createdTime.UTC().Format(time.RFC3339)
+			post.Tier = tierFromAge(now.Sub(createdTime).Seconds())
 		}
 		if fd, ok := p["found_date"].(primitive.DateTime); ok && !fd.Time().IsZero() {
 			post.FoundDate = fd.Time().UTC().Format(time.RFC3339)
+			if !createdTime.IsZero() {
+				post.Tier = tierFromAge(fd.Time().Sub(createdTime).Seconds())
+			}
 		}
 		post.Longitude = floatFromBson(p["longitude"])
 		post.Latitude = floatFromBson(p["latitude"])
