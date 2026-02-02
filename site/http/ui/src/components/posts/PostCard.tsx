@@ -40,17 +40,23 @@ function tornMask(seed: number): string {
   return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='4' seed='${seed}'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='15'/%3E%3C/filter%3E%3Crect width='200' height='200' rx='8' filter='url(%23f)' fill='white'/%3E%3C/svg%3E")`;
 }
 
-function daysSince(dateStr: string): number {
-  const created = new Date(dateStr);
-  const now = new Date();
-  return Math.floor((now.getTime() - created.getTime()) / 86400000);
+function daysBetween(fromStr: string, toStr?: string): number {
+  const from = new Date(fromStr);
+  const to = toStr ? new Date(toStr) : new Date();
+  return Math.floor((to.getTime() - from.getTime()) / 86400000);
 }
 
 interface Props {
   post: NotFoundPost;
+  solvedBy?: string;
+  foundDate?: string;
 }
 
-export default function PostCard({ post }: Readonly<Props>) {
+export default function PostCard({
+  post,
+  solvedBy,
+  foundDate,
+}: Readonly<Props>) {
   const cardRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
   const [interacting, setInteracting] = useState(false);
@@ -118,7 +124,9 @@ export default function PostCard({ post }: Readonly<Props>) {
     });
   }, []);
 
-  const days = post.created_date ? daysSince(post.created_date) : null;
+  const days = post.created_date
+    ? daysBetween(post.created_date, foundDate)
+    : null;
   const marker = tierMarkers[post.tier] ?? tierMarkers[0];
 
   return (
@@ -126,7 +134,9 @@ export default function PostCard({ post }: Readonly<Props>) {
       ref={cardRef}
       className={`post-card${interacting ? " interacting" : ""}`}
       data-tier={post.tier}
-      style={{ "--glitter": `url(${glitterImg})`, ...style } as React.CSSProperties}
+      style={
+        { "--glitter": `url(${glitterImg})`, ...style } as React.CSSProperties
+      }
     >
       <div className="post-card__translater">
         <div
@@ -174,10 +184,19 @@ export default function PostCard({ post }: Readonly<Props>) {
                   #{String(post.id).padStart(4, "0")}
                 </a>
                 <div className="post-card__footer-right">
-                  <span className="post-card__author-label">
-                    {post.gender === "female" ? "Загадала" : "Загадал"}
-                  </span>
-                  <span className="post-card__author">{post.username}</span>
+                  {solvedBy === undefined ? (
+                    <>
+                      <span className="post-card__author-label">
+                        {post.gender === "female" ? "Загадала" : "Загадал"}
+                      </span>
+                      <span className="post-card__author">{post.username}</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="post-card__author-label">Разгадал</span>
+                      <span className="post-card__author">{solvedBy}</span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

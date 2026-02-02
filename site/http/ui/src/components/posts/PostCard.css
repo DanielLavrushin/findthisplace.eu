@@ -103,7 +103,7 @@
   position: relative;
   background: var(--tier-bg, linear-gradient(135deg, #f5f0e0 0%, #e8dcc8 100%));
   border: 3px solid var(--card-edge);
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* ── card content ── */
@@ -111,7 +111,8 @@
   all: unset;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   padding: 8%;
   box-sizing: border-box;
   transform-style: preserve-3d;

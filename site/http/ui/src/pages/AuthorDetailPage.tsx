@@ -12,7 +12,7 @@ import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useUserDetail } from "../components/users/useUserDetail";
-import PostRow from "../components/users/PostRow";
+import PostCard from "../components/posts/PostCard";
 import { formatDuration } from "../utils/formatDuration";
 import markerIcon from "../../assets/marker.png";
 
@@ -21,8 +21,19 @@ export default function AuthorDetailPage() {
   const userId = Number(id) || 0;
   const { data: user, isLoading, error } = useUserDetail(userId);
 
-  const authoredPosts = useMemo(
-    () => user?.posts.filter((p) => p.role === "author") ?? [],
+  const unsolvedPosts = useMemo(
+    () =>
+      (user?.posts.filter((p) => p.role === "author" && !p.is_found) ?? []).sort(
+        (a, b) => b.tier - a.tier,
+      ),
+    [user],
+  );
+
+  const solvedPosts = useMemo(
+    () =>
+      (user?.posts.filter((p) => p.role === "author" && p.is_found) ?? []).sort(
+        (a, b) => b.tier - a.tier,
+      ),
     [user],
   );
 
@@ -158,25 +169,56 @@ export default function AuthorDetailPage() {
         </Box>
       </Paper>
 
-      {authoredPosts.length > 0 && (
-        <Paper
-          elevation={0}
-          sx={{
-            p: 3,
-            borderRadius: 3,
-            border: "1px solid",
-            borderColor: "divider",
-          }}
-        >
+      {unsolvedPosts.length > 0 && (
+        <>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-            Посты
+            Не разгаданы
           </Typography>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-            {authoredPosts.map((post) => (
-              <PostRow key={post.id} post={post} />
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "repeat(auto-fill, minmax(180px, 1fr))",
+                sm: "repeat(auto-fill, minmax(220px, 1fr))",
+                md: "repeat(4, 1fr)",
+              },
+              gap: 3,
+              mb: 4,
+            }}
+          >
+            {unsolvedPosts.map((post) => (
+              <PostCard key={post.id} post={post} />
             ))}
           </Box>
-        </Paper>
+        </>
+      )}
+
+      {solvedPosts.length > 0 && (
+        <>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
+            Разгаданы
+          </Typography>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "repeat(auto-fill, minmax(180px, 1fr))",
+                sm: "repeat(auto-fill, minmax(220px, 1fr))",
+                md: "repeat(4, 1fr)",
+              },
+              gap: 3,
+            }}
+          >
+            {solvedPosts.map((post) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                solvedBy={post.found_by}
+                foundDate={post.found_date}
+              />
+            ))}
+          </Box>
+        </>
       )}
     </Box>
   );

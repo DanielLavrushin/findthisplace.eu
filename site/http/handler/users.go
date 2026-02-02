@@ -42,6 +42,7 @@ type userPostResponse struct {
 	CreatedDate  string  `json:"created_date"`
 	IsFound      bool    `json:"is_found"`
 	FoundDate    string  `json:"found_date,omitempty"`
+	FoundBy      string  `json:"found_by,omitempty"`
 	Longitude    float64 `json:"longitude,omitempty"`
 	Latitude     float64 `json:"latitude,omitempty"`
 	Tier         int     `json:"tier"`
@@ -319,6 +320,16 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 			"path":                       "$author",
 			"preserveNullAndEmptyArrays": true,
 		}},
+		bson.M{"$lookup": bson.M{
+			"from":         "dirty_users",
+			"localField":   "ftp.found_by_id",
+			"foreignField": "_id",
+			"as":           "finder",
+		}},
+		bson.M{"$unwind": bson.M{
+			"path":                       "$finder",
+			"preserveNullAndEmptyArrays": true,
+		}},
 		bson.M{"$project": bson.M{
 			"_id":            1,
 			"title":          1,
@@ -328,6 +339,7 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 			"created":        1,
 			"is_found":       "$ftp.is_found",
 			"found_date":     "$ftp.found_date",
+			"found_by":       "$finder.login",
 			"longitude":      "$ftp.longitude",
 			"latitude":       "$ftp.latitude",
 		}},
@@ -414,16 +426,21 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 		if v, ok := p["is_found"].(bool); ok {
 			post.IsFound = v
 		}
+		var createdTime time.Time
 		if created, ok := p["created"].(primitive.DateTime); ok {
-			t := created.Time()
-			post.CreatedDate = t.UTC().Format(time.RFC3339)
-			post.Tier = tierFromAge(now.Sub(t).Seconds())
+			createdTime = created.Time()
+			post.CreatedDate = createdTime.UTC().Format(time.RFC3339)
+			post.Tier = tierFromAge(now.Sub(createdTime).Seconds())
 		}
 		if fd, ok := p["found_date"].(primitive.DateTime); ok && !fd.Time().IsZero() {
 			post.FoundDate = fd.Time().UTC().Format(time.RFC3339)
+			if !createdTime.IsZero() {
+				post.Tier = tierFromAge(fd.Time().Sub(createdTime).Seconds())
+			}
 		}
 		post.Longitude = floatFromBson(p["longitude"])
 		post.Latitude = floatFromBson(p["latitude"])
+		post.FoundBy = strFromBson(p["found_by"])
 		posts = append(posts, post)
 	}
 

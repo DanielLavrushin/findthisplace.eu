@@ -9,6 +9,7 @@ export interface UserPost {
   created_date: string;
   is_found: boolean;
   found_date?: string;
+  found_by?: string;
   longitude?: number;
   latitude?: number;
   tier: number;
