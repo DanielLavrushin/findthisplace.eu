@@ -1,0 +1,2 @@
+2026-02-02T19:55:17+01:00 [INFO] (codacy-cli-v2/cli-v2.go:27) Starting Codacy CLI version=1.0.0-main.368.sha.e1bb1bc (e1bb1bc) built at 2026-01-14T16:47:26Z
+2026-02-02T19:55:17+01:00 [INFO] (codacy-cli-v2/cmd/root.go:34) Executing CLI command full_command=[/home/dvl/.cache/codacy/codacy-cli-v2/1.0.0-main.368.sha.e1bb1bc/codacy-cli-v2 init --provider gh --organization DanielLavrushin --repository findthisplace.eu --api-token ***] args=[] command=init

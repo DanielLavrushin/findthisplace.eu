@@ -5,20 +5,39 @@ import tire1marker from "../../../assets/tire1marker.png";
 import tire2marker from "../../../assets/tire2marker.png";
 import tire3marker from "../../../assets/tire3marker.png";
 import tire4marker from "../../../assets/tire4marker.png";
+import glitterImg from "../../../assets/glitter.png";
 import "./PostCard.css";
 
-const tierMarkers = [tire0marker, tire1marker, tire2marker, tire3marker, tire4marker];
+const tierMarkers = [
+  tire0marker,
+  tire1marker,
+  tire2marker,
+  tire3marker,
+  tire4marker,
+];
 
 function clamp(val: number, min = 0, max = 100) {
   return Math.min(Math.max(val, min), max);
 }
 
 function round(val: number, precision = 3) {
-  return parseFloat(val.toFixed(precision));
+  return Number.parseFloat(val.toFixed(precision));
 }
 
-function adjust(val: number, fromMin: number, fromMax: number, toMin: number, toMax: number) {
-  return round(toMin + ((val - fromMin) / (fromMax - fromMin)) * (toMax - toMin));
+function adjust(
+  val: number,
+  fromMin: number,
+  fromMax: number,
+  toMin: number,
+  toMax: number,
+) {
+  return round(
+    toMin + ((val - fromMin) / (fromMax - fromMin)) * (toMax - toMin),
+  );
+}
+
+function tornMask(seed: number): string {
+  return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='4' seed='${seed}'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='15'/%3E%3C/filter%3E%3Crect width='200' height='200' rx='8' filter='url(%23f)' fill='white'/%3E%3C/svg%3E")`;
 }
 
 function daysSince(dateStr: string): number {
@@ -31,7 +50,7 @@ interface Props {
   post: NotFoundPost;
 }
 
-export default function PostCard({ post }: Props) {
+export default function PostCard({ post }: Readonly<Props>) {
   const cardRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
   const [interacting, setInteracting] = useState(false);
@@ -55,11 +74,7 @@ export default function PostCard({ post }: Props) {
       y: percent.y - 50,
     };
 
-    const fromCenter = clamp(
-      Math.sqrt(center.x * center.x + center.y * center.y) / 50,
-      0,
-      1
-    );
+    const fromCenter = clamp(Math.hypot(center.x, center.y) / 50, 0, 1);
 
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(() => {
@@ -111,7 +126,7 @@ export default function PostCard({ post }: Props) {
       ref={cardRef}
       className={`post-card${interacting ? " interacting" : ""}`}
       data-tier={post.tier}
-      style={style as React.CSSProperties}
+      style={{ "--glitter": `url(${glitterImg})`, ...style } as React.CSSProperties}
     >
       <div className="post-card__translater">
         <div
@@ -122,11 +137,7 @@ export default function PostCard({ post }: Props) {
           <div className="post-card__front">
             <div className="post-card__content">
               <div className="post-card__header">
-                <img
-                  className="post-card__header-marker"
-                  src={marker}
-                  alt=""
-                />
+                <img className="post-card__header-marker" src={marker} alt="" />
                 {days !== null && (
                   <div className="post-card__days">
                     <span>дней</span>
@@ -144,6 +155,10 @@ export default function PostCard({ post }: Props) {
                     src={post.main_image_url}
                     alt={post.title}
                     loading="lazy"
+                    style={{
+                      maskImage: tornMask(post.id),
+                      WebkitMaskImage: tornMask(post.id),
+                    }}
                   />
                 )}
               </div>

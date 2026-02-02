@@ -1,7 +1,6 @@
 import { Box, Paper, Typography } from "@mui/material";
 import PublicIcon from "@mui/icons-material/Public";
 import PlaceIcon from "@mui/icons-material/Place";
-import EmojiEventsIcon from "@mui/icons-material/EmojiEvents";
 import CountriesList from "../components/countries/CountriesList";
 import CountryPodium from "../components/countries/CountryPodium";
 import WorldHeatmap from "../components/countries/WorldHeatmap";
@@ -11,11 +10,11 @@ function StatCard({
   icon,
   label,
   value,
-}: {
+}: Readonly<{
   icon: React.ReactNode;
   label: string;
   value: string | number;
-}) {
+}>) {
   return (
     <Paper
       elevation={0}
@@ -61,7 +60,6 @@ export default function TagsPage() {
   const { data: countries = [] } = useCountries();
 
   const totalPosts = countries.reduce((sum, c) => sum + c.count, 0);
-  const topCountry = countries.length > 0 ? countries[0].country : "—";
 
   return (
     <Box>
