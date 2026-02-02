@@ -9,8 +9,10 @@ import Layout from "./layout/Layout";
 import NotFoundPage from "./pages/NotFoundPage";
 import MapPage from "./pages/MapPage";
 import AuthorsPage from "./pages/AuthorsPage";
+import AuthorDetailPage from "./pages/AuthorDetailPage";
 import TagsPage from "./pages/TagsPage";
 import SearchersPage from "./pages/SearchersPage";
+import SearcherDetailPage from "./pages/SearcherDetailPage";
 
 function App() {
   return (
@@ -23,7 +25,9 @@ function App() {
               <Route path="/not-found" element={<NotFoundPage />} />
               <Route path="/map" element={<MapPage />} />
               <Route path="/authors" element={<AuthorsPage />} />
+              <Route path="/authors/:id" element={<AuthorDetailPage />} />
               <Route path="/searchers" element={<SearchersPage />} />
+              <Route path="/searchers/:id" element={<SearcherDetailPage />} />
               <Route path="/tags" element={<TagsPage />} />
               <Route path="*" element={<Navigate to="/map" replace />} />
             </Route>

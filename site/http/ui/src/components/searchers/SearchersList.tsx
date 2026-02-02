@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { Link as RouterLink } from "react-router-dom";
 import markerIcon from "../../../assets/marker.png";
 import tire0marker from "../../../assets/tire0marker.png";
 import tire1marker from "../../../assets/tire1marker.png";
@@ -91,12 +92,17 @@ function SearcherRow({
       />
 
       <Typography
+        component={RouterLink}
+        to={`/searchers/${s.id}`}
         noWrap
         sx={{
           fontWeight: i < 3 ? 700 : 400,
           fontSize: "0.9rem",
           overflow: "hidden",
           textOverflow: "ellipsis",
+          textDecoration: "none",
+          color: "inherit",
+          "&:hover": { textDecoration: "underline" },
         }}
       >
         {s.login}

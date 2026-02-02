@@ -11,6 +11,7 @@ import {
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
+import { Link as RouterLink } from "react-router-dom";
 import { Author, useAuthors } from "./useAuthors";
 import { formatDuration } from "../../utils/formatDuration";
 import markerIcon from "../../../assets/marker.png";
@@ -74,12 +75,17 @@ function AuthorRow({ a, i }: { a: Author; i: number }) {
       />
 
       <Typography
+        component={RouterLink}
+        to={`/authors/${a.id}`}
         noWrap
         sx={{
           fontWeight: i < 3 ? 700 : 400,
           fontSize: "0.9rem",
           overflow: "hidden",
           textOverflow: "ellipsis",
+          textDecoration: "none",
+          color: "inherit",
+          "&:hover": { textDecoration: "underline" },
         }}
       >
         {a.login}
