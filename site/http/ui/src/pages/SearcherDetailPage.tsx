@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useParams, Link as RouterLink } from "react-router-dom";
 import {
   Avatar,
@@ -29,10 +29,15 @@ export default function SearcherDetailPage() {
   const { id } = useParams<{ id: string }>();
   const userId = Number(id) || 0;
   const { data: user, isLoading, error } = useUserDetail(userId);
+  const [activeTier, setActiveTier] = useState<number | null>(null);
 
   const foundPosts = useMemo(
-    () => user?.posts.filter((p) => p.role === "finder") ?? [],
-    [user],
+    () => {
+      const all = user?.posts.filter((p) => p.role === "finder") ?? [];
+      if (activeTier === null) return all;
+      return all.filter((p) => p.tier === activeTier);
+    },
+    [user, activeTier],
   );
 
   if (isLoading) {
@@ -118,7 +123,18 @@ export default function SearcherDetailPage() {
             alignItems: "center",
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              cursor: activeTier !== null ? "pointer" : "default",
+              opacity: activeTier !== null ? 0.5 : 1,
+              transition: "opacity 0.2s",
+              "&:hover": activeTier !== null ? { opacity: 0.8 } : {},
+            }}
+            onClick={() => setActiveTier(null)}
+          >
             <img src={markerIcon} alt="" width={18} height={18} />
             <Typography sx={{ fontWeight: 700 }}>
               {user.found_tiers_total}
@@ -130,19 +146,25 @@ export default function SearcherDetailPage() {
 
           {tiers.map((count, ti) => {
             if (count === 0) return null;
+            const isActive = activeTier === ti;
+            const isDimmed = activeTier !== null && !isActive;
             return (
               <Tooltip key={ti} title={tierLabels[ti]} arrow>
                 <Chip
                   size="small"
                   icon={<img src={tierIcons[ti]} alt="" width={14} height={14} />}
                   label={count}
+                  onClick={() => setActiveTier(isActive ? null : ti)}
                   sx={{
                     height: 24,
-                    bgcolor: `${tierColors[ti]}18`,
-                    border: `1px solid ${tierColors[ti]}40`,
+                    bgcolor: isActive ? `${tierColors[ti]}30` : `${tierColors[ti]}18`,
+                    border: `1px solid ${isActive ? tierColors[ti] : `${tierColors[ti]}40`}`,
                     color: tierColors[ti],
                     fontWeight: 700,
                     fontSize: "0.8rem",
+                    opacity: isDimmed ? 0.4 : 1,
+                    cursor: "pointer",
+                    transition: "opacity 0.2s, border-color 0.2s, background-color 0.2s",
                     "& .MuiChip-icon": { ml: 0.5 },
                     "& .MuiChip-label": { px: 0.5 },
                   }}
