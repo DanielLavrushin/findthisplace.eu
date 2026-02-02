@@ -1,5 +1,5 @@
-import { Typography } from "@mui/material";
+import PostCardList from "../components/posts/PostCardList";
 
 export default function NotFoundPage() {
-  return <Typography variant="h4">Не найдено</Typography>;
+  return <PostCardList />;
 }

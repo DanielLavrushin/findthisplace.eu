@@ -9,6 +9,9 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import markerIcon from "../../assets/marker.png";
+import SearchersList from "../components/searchers/SearchersList";
+import AuthorsList from "../components/authors/AuthorsList";
+import CountriesList from "../components/countries/CountriesList";
 
 interface MapPost {
   id: number;
@@ -58,7 +61,8 @@ export default function MapPage() {
     <Box>
       <Box
         sx={{
-          height: "calc(100vh - 200px)",
+          height: "40vh",
+          minHeight: 300,
           width: "100%",
           borderRadius: 2,
           overflow: "hidden",
@@ -111,6 +115,18 @@ export default function MapPage() {
         <Typography variant="body2" color="text.secondary" sx={{ ml: "auto" }}>
           Отображается маркеров: {posts.length}
         </Typography>
+      </Box>
+
+      <Box sx={{ display: "flex", gap: 3, mt: 4, flexWrap: "wrap", alignItems: "stretch" }}>
+        <Box sx={{ flex: 1, minWidth: 300, display: "flex" }}>
+          <SearchersList limit={10} title="Top 10 Сыщиков" />
+        </Box>
+        <Box sx={{ flex: 1, minWidth: 300, display: "flex" }}>
+          <AuthorsList limit={10} title="Top 10 Авторов" />
+        </Box>
+        <Box sx={{ flex: "0 1 280px", minWidth: 240, display: "flex" }}>
+          <CountriesList limit={10} title="ТОП 10 Стран" />
+        </Box>
       </Box>
     </Box>
   );

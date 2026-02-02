@@ -6,7 +6,7 @@ const navItems = [
   { label: "Не найдено", path: "/not-found" },
   { label: "Карта", path: "/map" },
   { label: "Авторы", path: "/authors" },
-  { label: "Сыщики", path: "/detectives" },
+  { label: "Сыщики", path: "/searchers" },
   { label: "Метки", path: "/tags" },
 ];
 
@@ -43,12 +43,8 @@ export default function Header() {
               key={item.path}
               component={Link}
               to={item.path}
-              color={
-                location.pathname === item.path ? "primary" : "inherit"
-              }
-              variant={
-                location.pathname === item.path ? "outlined" : "text"
-              }
+              color={location.pathname === item.path ? "primary" : "inherit"}
+              variant={location.pathname === item.path ? "outlined" : "text"}
             >
               {item.label}
             </Button>

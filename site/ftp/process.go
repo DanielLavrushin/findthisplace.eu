@@ -23,6 +23,12 @@ func Process(ctx context.Context, store *db.DB, postIDs []int) error {
 	if err := processPosts(ctx, store, postIDs); err != nil {
 		return err
 	}
+	log.Println("ftp.Process: posts completed")
+
+	if err := processUsers(ctx, store); err != nil {
+		return err
+	}
+	log.Println("ftp.Process: users completed")
 
 	log.Println("ftp.Process: completed")
 	return nil

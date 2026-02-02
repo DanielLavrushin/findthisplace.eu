@@ -1,13 +1,13 @@
 import { Box, Typography } from "@mui/material";
-import AuthorsList from "../components/authors/AuthorsList";
+import SearchersList from "../components/searchers/SearchersList";
 
-export default function AuthorsPage() {
+export default function SearchersPage() {
   return (
     <Box>
       <Typography variant="h4" sx={{ mb: 3 }}>
-        Авторы
+        Сыщики
       </Typography>
-      <AuthorsList />
+      <SearchersList />
     </Box>
   );
 }

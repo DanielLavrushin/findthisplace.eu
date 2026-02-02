@@ -42,6 +42,25 @@ func Get[T any](ctx context.Context, m *Manager, name string) (T, error) {
 		}
 	}
 
+	// handle primitive.A → []int conversion
+	if arr, ok := setting.Value.(primitive.A); ok {
+		ints := make([]int, 0, len(arr))
+		for _, v := range arr {
+			switch n := v.(type) {
+			case int32:
+				ints = append(ints, int(n))
+			case int64:
+				ints = append(ints, int(n))
+			case float64:
+				ints = append(ints, int(n))
+			}
+		}
+		var converted interface{} = ints
+		if val, ok := converted.(T); ok {
+			return val, nil
+		}
+	}
+
 	val, ok := setting.Value.(T)
 	if !ok {
 		return zero, fmt.Errorf("setting %q: expected %T, got %T", name, zero, setting.Value)

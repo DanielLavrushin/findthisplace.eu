@@ -5,6 +5,8 @@ import "go.mongodb.org/mongo-driver/mongo"
 const (
 	LastGrabberTime   = "last_grabber_time"
 	LastGrabberStatus = "last_grabber_status"
+
+	HiddenNotFoundPosts = "hidden_not_found_posts"
 )
 
 type Manager struct {

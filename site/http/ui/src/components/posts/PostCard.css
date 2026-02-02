@@ -1,0 +1,383 @@
+:root {
+  --card-aspect: 0.718;
+  --card-radius: 4.55% / 3.5%;
+  --card-edge: hsl(47, 100%, 78%);
+  --card-back: hsl(40, 50%, 85%);
+}
+
+/* ── base card ── */
+.post-card {
+  transform: translate3d(0, 0, 0.01px);
+  pointer-events: none;
+  z-index: calc(var(--card-scale) * 2);
+  will-change: transform, z-index;
+  transform-style: preserve-3d;
+
+  --pointer-x: 50%;
+  --pointer-y: 50%;
+  --card-scale: 1;
+  --card-opacity: 0;
+  --translate-x: 0px;
+  --translate-y: 0px;
+  --rotate-x: 0deg;
+  --rotate-y: 0deg;
+  --background-x: 50%;
+  --background-y: 50%;
+  --pointer-from-center: 0;
+  --pointer-from-top: 0;
+  --pointer-from-left: 0;
+}
+
+.post-card,
+.post-card * {
+  outline: 1px solid transparent;
+}
+
+.post-card,
+.post-card__rotator {
+  aspect-ratio: var(--card-aspect);
+  border-radius: var(--card-radius);
+}
+
+.post-card.interacting {
+  z-index: calc(var(--card-scale) * 120);
+}
+
+/* ── translater & rotator ── */
+.post-card__translater,
+.post-card__rotator {
+  display: grid;
+  perspective: 600px;
+  will-change: transform, box-shadow;
+  transform-origin: center;
+  transform-style: preserve-3d;
+}
+
+.post-card__translater {
+  width: auto;
+  position: relative;
+  transform: translate3d(var(--translate-x), var(--translate-y), 0.01px) scale(var(--card-scale));
+}
+
+.post-card__rotator {
+  transform: rotateY(var(--rotate-x)) rotateX(var(--rotate-y));
+  transform-style: preserve-3d;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: box-shadow 0.4s ease, opacity 0.33s ease-out;
+  box-shadow:
+    0 0 3px -1px transparent,
+    0 0 2px 1px transparent,
+    0 0 5px 0px transparent,
+    0px 10px 20px -5px rgba(0, 0, 0, 0.25),
+    0 2px 15px -5px rgba(0, 0, 0, 0.15),
+    0 0 20px 0px transparent;
+}
+
+.post-card.interacting .post-card__rotator {
+  box-shadow:
+    0 0 3px -1px white,
+    0 0 3px 1px var(--card-edge),
+    0 0 12px 2px var(--tier-glow, hsl(40, 80%, 70%)),
+    0px 10px 20px -5px rgba(0, 0, 0, 0.35),
+    0 0 40px -30px var(--tier-glow, hsl(40, 80%, 70%)),
+    0 0 50px -20px var(--tier-glow, hsl(40, 80%, 70%));
+}
+
+.post-card__rotator > * {
+  width: 100%;
+  display: grid;
+  grid-area: 1 / 1;
+  aspect-ratio: var(--card-aspect);
+  border-radius: var(--card-radius);
+  transform-style: preserve-3d;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* ── card front ── */
+.post-card__front {
+  backface-visibility: hidden;
+  transform: translate3d(0, 0, 0.01px);
+  position: relative;
+  background: var(--tier-bg, linear-gradient(135deg, #f5f0e0 0%, #e8dcc8 100%));
+  border: 3px solid var(--card-edge);
+}
+
+/* ── card content ── */
+.post-card__content {
+  all: unset;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 8%;
+  box-sizing: border-box;
+}
+
+.post-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4%;
+  min-height: 24px;
+}
+
+.post-card__header-marker {
+  width: clamp(20px, 2.5vw, 32px);
+  height: auto;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+.post-card__days {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: clamp(10px, 1.2vw, 14px);
+  font-weight: 700;
+  color: #333;
+}
+
+.post-card__days-number {
+  font-size: clamp(16px, 2vw, 24px);
+  font-weight: 700;
+}
+
+
+.post-card__title {
+  font-weight: 700;
+  font-style: italic;
+  font-size: clamp(11px, 1.4vw, 18px);
+  color: #1a1a1a;
+  margin-bottom: 4%;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.post-card__image-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  min-height: 0;
+}
+
+.post-card__image {
+  width: 85%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: 8px;
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='4'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='15'/%3E%3C/filter%3E%3Crect width='200' height='200' rx='8' filter='url(%23f)' fill='white'/%3E%3C/svg%3E");
+  mask-size: cover;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='4'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='15'/%3E%3C/filter%3E%3Crect width='200' height='200' rx='8' filter='url(%23f)' fill='white'/%3E%3C/svg%3E");
+  -webkit-mask-size: cover;
+}
+
+.post-card__footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 4%;
+}
+
+.post-card__id {
+  font-size: clamp(9px, 1vw, 12px);
+  font-weight: 700;
+  color: #666;
+  text-decoration: none;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.post-card__id:hover {
+  color: #1a1a1a;
+  text-decoration: underline;
+}
+
+.post-card__footer-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.post-card__author-label {
+  font-size: clamp(9px, 1vw, 13px);
+  color: #555;
+  font-style: italic;
+}
+
+.post-card__author {
+  font-size: clamp(11px, 1.3vw, 16px);
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+/* ── shine layer (holographic) ── */
+.post-card__shine {
+  display: grid;
+  transform: translateZ(1px);
+  overflow: hidden;
+  z-index: 3;
+  background-image:
+    repeating-linear-gradient(
+      82deg,
+      hsl(53, 65%, 60%) 4%,
+      hsl(93, 56%, 50%) 8%,
+      hsl(176, 54%, 49%) 12%,
+      hsl(228, 59%, 55%) 16%,
+      hsl(283, 60%, 55%) 20%,
+      hsl(326, 59%, 51%) 24%,
+      hsl(326, 59%, 51%) 28%,
+      hsl(283, 60%, 55%) 32%,
+      hsl(228, 59%, 55%) 36%,
+      hsl(176, 54%, 49%) 40%,
+      hsl(93, 56%, 50%) 44%,
+      hsl(53, 65%, 60%) 48%
+    ),
+    radial-gradient(
+      farthest-corner circle at var(--pointer-x) var(--pointer-y),
+      hsla(180, 100%, 89%, 0.5) 5%,
+      hsla(180, 14%, 57%, 0.3) 40%,
+      hsl(0, 0%, 0%) 130%
+    );
+  background-blend-mode: multiply;
+  background-position:
+    calc(10% + var(--pointer-from-left) * 80%) calc(10% + var(--pointer-from-top) * 80%),
+    center center;
+  background-size: 400% 900%, cover;
+  filter: brightness(0.7) contrast(1.5) saturate(0.4);
+  mix-blend-mode: color-dodge;
+  opacity: calc(var(--card-opacity) * 0.6);
+}
+
+.post-card__shine::before {
+  content: "";
+  grid-area: 1 / 1;
+  border-radius: var(--card-radius);
+  transform: translateZ(1px);
+  z-index: 2;
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      hsla(0, 0%, 100%, 0) 0%,
+      hsla(0, 0%, 100%, 0) 4.5%,
+      hsla(0, 0%, 100%, 0.12) 4.65%,
+      hsla(0, 0%, 100%, 0) 4.8%
+    ),
+    repeating-linear-gradient(
+      133deg,
+      hsl(2, 100%, 73%) 0%,
+      hsl(53, 100%, 69%) 3.8%,
+      hsl(93, 100%, 69%) 7.6%,
+      hsl(176, 100%, 76%) 11.4%,
+      hsl(228, 100%, 74%) 15.2%,
+      hsl(283, 100%, 73%) 19%,
+      hsl(2, 100%, 73%) 22.8%
+    ),
+    radial-gradient(
+      farthest-corner circle at var(--pointer-x) var(--pointer-y),
+      hsla(0, 0%, 0%, 0.1) 12%,
+      hsla(0, 0%, 0%, 0.15) 20%,
+      hsla(0, 0%, 0%, 0.25) 120%
+    );
+  background-blend-mode: hard-light, hard-light;
+  background-position:
+    center center,
+    0% var(--background-y),
+    center center;
+  background-size: 60% 160%, 200% 400%, cover;
+  filter: brightness(0.8) contrast(1.2) saturate(0.6);
+  mix-blend-mode: soft-light;
+}
+
+.post-card__shine::after {
+  content: "";
+  grid-area: 1 / 1;
+  border-radius: var(--card-radius);
+  transform: translateZ(1.2px);
+  z-index: 3;
+  background-image:
+    repeating-linear-gradient(
+      133deg,
+      hsl(283, 100%, 73%) 0%,
+      hsl(2, 100%, 73%) 3.8%,
+      hsl(53, 100%, 69%) 7.6%,
+      hsl(93, 100%, 69%) 11.4%,
+      hsl(176, 100%, 76%) 15.2%,
+      hsl(228, 100%, 74%) 19%,
+      hsl(283, 100%, 73%) 22.8%
+    ),
+    radial-gradient(
+      farthest-corner circle at var(--pointer-x) var(--pointer-y),
+      hsla(0, 0%, 0%, 0.1) 12%,
+      hsla(0, 0%, 0%, 0.15) 20%,
+      hsla(0, 0%, 0%, 0.25) 120%
+    );
+  background-blend-mode: hard-light;
+  background-position:
+    0% var(--background-y),
+    center center;
+  background-size: 200% 400%, cover;
+  filter: brightness(0.9) contrast(1.0) saturate(0.6);
+  mix-blend-mode: soft-light;
+}
+
+/* ── glare layer ── */
+.post-card__glare {
+  transform: translateZ(1.41px);
+  overflow: hidden;
+  background-image: radial-gradient(
+    farthest-corner circle at var(--pointer-x) var(--pointer-y),
+    hsla(0, 0%, 100%, 0.5) 10%,
+    hsla(0, 0%, 100%, 0.35) 20%,
+    hsla(0, 0%, 0%, 0.3) 90%
+  );
+  opacity: calc(var(--card-opacity) * 0.5);
+  mix-blend-mode: overlay;
+}
+
+/* ── tier themes ── */
+
+/* tier 0: basic, cheap, simple (< 6 months) */
+.post-card[data-tier="0"] {
+  --tier-bg: linear-gradient(135deg, #faf6ee 0%, #f0e8d8 100%);
+  --tier-glow: hsl(40, 30%, 70%);
+}
+
+/* tier 1: bronze (6m–1y) */
+.post-card[data-tier="1"] {
+  --tier-bg: linear-gradient(135deg, #e8c8a0 0%, #c49264 50%, #a87040 100%);
+  --tier-glow: hsl(25, 55%, 55%);
+}
+
+/* tier 2: silver (1–2y) */
+.post-card[data-tier="2"] {
+  --tier-bg: linear-gradient(135deg, #d8dce6 0%, #a8b0bc 50%, #8a929e 100%);
+  --tier-glow: hsl(220, 15%, 70%);
+}
+
+/* tier 3: gold (2–5y) */
+.post-card[data-tier="3"] {
+  --tier-bg: linear-gradient(135deg, #f5e6b8 0%, #d4a843 50%, #c49530 100%);
+  --tier-glow: hsl(43, 85%, 55%);
+}
+
+/* tier 4: epic purple (5y+) */
+.post-card[data-tier="4"] {
+  --tier-bg: linear-gradient(135deg, #e8d0ee 0%, #d0a8e0 30%, #c090d4 60%, #b080c8 100%);
+  --tier-glow: hsl(280, 60%, 70%);
+}
+
+/* ── non-interactive fallback ── */
+.post-card:not(.interacting) .post-card__translater,
+.post-card:not(.interacting) .post-card__rotator,
+.post-card:not(.interacting) .post-card__shine,
+.post-card:not(.interacting) .post-card__glare {
+  transition: all 0.5s ease;
+}
