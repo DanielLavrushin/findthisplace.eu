@@ -37,11 +37,14 @@ type userPostResponse struct {
 	Id           int     `json:"id"`
 	Title        string  `json:"title"`
 	MainImageURL string  `json:"main_image_url"`
+	Username     string  `json:"username"`
+	Gender       string  `json:"gender"`
 	CreatedDate  string  `json:"created_date"`
 	IsFound      bool    `json:"is_found"`
 	FoundDate    string  `json:"found_date,omitempty"`
 	Longitude    float64 `json:"longitude,omitempty"`
 	Latitude     float64 `json:"latitude,omitempty"`
+	Tier         int     `json:"tier"`
 	Role         string  `json:"role"`
 }
 
@@ -306,10 +309,22 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 			"path":                       "$ftp",
 			"preserveNullAndEmptyArrays": true,
 		}},
+		bson.M{"$lookup": bson.M{
+			"from":         "dirty_users",
+			"localField":   "user_id",
+			"foreignField": "_id",
+			"as":           "author",
+		}},
+		bson.M{"$unwind": bson.M{
+			"path":                       "$author",
+			"preserveNullAndEmptyArrays": true,
+		}},
 		bson.M{"$project": bson.M{
 			"_id":            1,
 			"title":          1,
 			"main_image_url": 1,
+			"username":       "$author.login",
+			"gender":         "$author.gender",
 			"created":        1,
 			"is_found":       "$ftp.is_found",
 			"found_date":     "$ftp.found_date",
@@ -345,10 +360,22 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 			"path":                       "$post",
 			"preserveNullAndEmptyArrays": true,
 		}},
+		bson.M{"$lookup": bson.M{
+			"from":         "dirty_users",
+			"localField":   "post.user_id",
+			"foreignField": "_id",
+			"as":           "author",
+		}},
+		bson.M{"$unwind": bson.M{
+			"path":                       "$author",
+			"preserveNullAndEmptyArrays": true,
+		}},
 		bson.M{"$project": bson.M{
 			"_id":            1,
 			"title":          "$post.title",
 			"main_image_url": "$post.main_image_url",
+			"username":       "$author.login",
+			"gender":         "$author.gender",
 			"created":        "$post.created",
 			"is_found":       1,
 			"found_date":     1,
@@ -373,18 +400,24 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 
 	posts := make([]userPostResponse, 0, len(authoredRaw)+len(foundRaw))
 
+	now := time.Now()
+
 	for _, p := range authoredRaw {
 		post := userPostResponse{
 			Id:           intFromBson(p["_id"]),
 			Title:        strFromBson(p["title"]),
 			MainImageURL: strFromBson(p["main_image_url"]),
+			Username:     strFromBson(p["username"]),
+			Gender:       strFromBson(p["gender"]),
 			Role:         "author",
 		}
 		if v, ok := p["is_found"].(bool); ok {
 			post.IsFound = v
 		}
 		if created, ok := p["created"].(primitive.DateTime); ok {
-			post.CreatedDate = created.Time().UTC().Format(time.RFC3339)
+			t := created.Time()
+			post.CreatedDate = t.UTC().Format(time.RFC3339)
+			post.Tier = tierFromAge(now.Sub(t).Seconds())
 		}
 		if fd, ok := p["found_date"].(primitive.DateTime); ok && !fd.Time().IsZero() {
 			post.FoundDate = fd.Time().UTC().Format(time.RFC3339)
@@ -399,13 +432,17 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 			Id:           intFromBson(p["_id"]),
 			Title:        strFromBson(p["title"]),
 			MainImageURL: strFromBson(p["main_image_url"]),
+			Username:     strFromBson(p["username"]),
+			Gender:       strFromBson(p["gender"]),
 			Role:         "finder",
 		}
 		if v, ok := p["is_found"].(bool); ok {
 			post.IsFound = v
 		}
 		if created, ok := p["created"].(primitive.DateTime); ok {
-			post.CreatedDate = created.Time().UTC().Format(time.RFC3339)
+			t := created.Time()
+			post.CreatedDate = t.UTC().Format(time.RFC3339)
+			post.Tier = tierFromAge(now.Sub(t).Seconds())
 		}
 		if fd, ok := p["found_date"].(primitive.DateTime); ok && !fd.Time().IsZero() {
 			post.FoundDate = fd.Time().UTC().Format(time.RFC3339)

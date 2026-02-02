@@ -4,11 +4,14 @@ export interface UserPost {
   id: number;
   title: string;
   main_image_url: string;
+  username: string;
+  gender: string;
   created_date: string;
   is_found: boolean;
   found_date?: string;
   longitude?: number;
   latitude?: number;
+  tier: number;
   role: "author" | "finder";
 }
 

@@ -12,7 +12,7 @@ import {
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useUserDetail } from "../components/users/useUserDetail";
-import PostRow from "../components/users/PostRow";
+import PostCard from "../components/posts/PostCard";
 import { formatDuration } from "../utils/formatDuration";
 import markerIcon from "../../assets/marker.png";
 import tire0marker from "../../assets/tire0marker.png";
@@ -169,24 +169,26 @@ export default function SearcherDetailPage() {
       </Paper>
 
       {foundPosts.length > 0 && (
-        <Paper
-          elevation={0}
-          sx={{
-            p: 3,
-            borderRadius: 3,
-            border: "1px solid",
-            borderColor: "divider",
-          }}
-        >
+        <>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
             Находки
           </Typography>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "repeat(auto-fill, minmax(180px, 1fr))",
+                sm: "repeat(auto-fill, minmax(220px, 1fr))",
+                md: "repeat(4, 1fr)",
+              },
+              gap: 3,
+            }}
+          >
             {foundPosts.map((post) => (
-              <PostRow key={post.id} post={post} />
+              <PostCard key={post.id} post={post} />
             ))}
           </Box>
-        </Paper>
+        </>
       )}
     </Box>
   );
