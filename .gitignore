@@ -9,6 +9,7 @@ profile.cov
 
 __debug_bin*
 
-
 #Ignore vscode AI rules
 .github/instructions/codacy.instructions.md
+
+build/
