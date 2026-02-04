@@ -11,6 +11,9 @@ import {
 } from "@mui/material";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { useUserDetail } from "../components/users/useUserDetail";
 import PostCard from "../components/posts/PostCard";
 import { formatDuration } from "../utils/formatDuration";
@@ -21,9 +24,25 @@ import tire2marker from "../../assets/tire2marker.png";
 import tire3marker from "../../assets/tire3marker.png";
 import tire4marker from "../../assets/tire4marker.png";
 
-const tierIcons = [tire0marker, tire1marker, tire2marker, tire3marker, tire4marker];
+const tierIcons = [
+  tire0marker,
+  tire1marker,
+  tire2marker,
+  tire3marker,
+  tire4marker,
+];
 const tierLabels = ["< 6 мес", "6м–1г", "1–2г", "2–5л", "5+ лет"];
 const tierColors = ["#666666", "#B87333", "#A8A8A8", "#F5A623", "#B044AA"];
+
+const tierLeafletIcons = tierIcons.map(
+  (icon) =>
+    new L.Icon({
+      iconUrl: icon,
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+      popupAnchor: [0, -32],
+    }),
+);
 
 export default function SearcherDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -31,16 +50,13 @@ export default function SearcherDetailPage() {
   const { data: user, isLoading, error } = useUserDetail(userId);
   const [activeTier, setActiveTier] = useState<number | null>(null);
 
-  const foundPosts = useMemo(
-    () => {
-      const all = (user?.posts.filter((p) => p.role === "finder") ?? []).map(
-        (p) => ({ ...p, found_by: user?.login })
-      );
-      if (activeTier === null) return all;
-      return all.filter((p) => p.tier === activeTier);
-    },
-    [user, activeTier],
-  );
+  const foundPosts = useMemo(() => {
+    const all = (user?.posts.filter((p) => p.role === "finder") ?? []).map(
+      (p) => ({ ...p, found_by: user?.login }),
+    );
+    if (activeTier === null) return all;
+    return all.filter((p) => p.tier === activeTier);
+  }, [user, activeTier]);
 
   if (isLoading) {
     return (
@@ -154,19 +170,24 @@ export default function SearcherDetailPage() {
               <Tooltip key={ti} title={tierLabels[ti]} arrow>
                 <Chip
                   size="small"
-                  icon={<img src={tierIcons[ti]} alt="" width={14} height={14} />}
+                  icon={
+                    <img src={tierIcons[ti]} alt="" width={14} height={14} />
+                  }
                   label={count}
                   onClick={() => setActiveTier(isActive ? null : ti)}
                   sx={{
                     height: 24,
-                    bgcolor: isActive ? `${tierColors[ti]}30` : `${tierColors[ti]}18`,
+                    bgcolor: isActive
+                      ? `${tierColors[ti]}30`
+                      : `${tierColors[ti]}18`,
                     border: `1px solid ${isActive ? tierColors[ti] : `${tierColors[ti]}40`}`,
                     color: tierColors[ti],
                     fontWeight: 700,
                     fontSize: "0.8rem",
                     opacity: isDimmed ? 0.4 : 1,
                     cursor: "pointer",
-                    transition: "opacity 0.2s, border-color 0.2s, background-color 0.2s",
+                    transition:
+                      "opacity 0.2s, border-color 0.2s, background-color 0.2s",
                     "& .MuiChip-icon": { ml: 0.5 },
                     "& .MuiChip-label": { px: 0.5 },
                   }}
@@ -195,8 +216,83 @@ export default function SearcherDetailPage() {
       {foundPosts.length > 0 && (
         <>
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
-            Находки
+            Найденные локации
           </Typography>
+
+          {(() => {
+            const postsWithCoords = foundPosts.filter(
+              (p) =>
+                p.latitude !== undefined &&
+                p.longitude !== undefined &&
+                p.latitude !== 0 &&
+                p.longitude !== 0,
+            );
+            if (postsWithCoords.length === 0) return null;
+
+            const bounds = L.latLngBounds(
+              postsWithCoords.map((p) => [p.latitude!, p.longitude!]),
+            );
+
+            return (
+              <Box
+                sx={{
+                  height: 350,
+                  borderRadius: 2,
+                  overflow: "hidden",
+                  border: "1px solid",
+                  borderColor: "divider",
+                  mb: 3,
+                }}
+              >
+                <MapContainer
+                  bounds={bounds}
+                  boundsOptions={{ padding: [30, 30] }}
+                  style={{ height: "100%", width: "100%" }}
+                >
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  {postsWithCoords.map((post) => (
+                    <Marker
+                      key={post.id}
+                      position={[post.latitude!, post.longitude!]}
+                      icon={tierLeafletIcons[post.tier] ?? tierLeafletIcons[0]}
+                    >
+                      <Popup>
+                        <Box sx={{ minWidth: 150 }}>
+                          {post.main_image_url && (
+                            <img
+                              src={post.main_image_url}
+                              alt=""
+                              style={{
+                                width: "100%",
+                                maxHeight: 100,
+                                objectFit: "cover",
+                                borderRadius: 4,
+                                marginBottom: 8,
+                              }}
+                            />
+                          )}
+                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                            {post.title || `Пост #${post.id}`}
+                          </Typography>
+                          {post.found_date && (
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                            >
+                              {new Date(post.found_date).toLocaleDateString(
+                                "ru-RU",
+                              )}
+                            </Typography>
+                          )}
+                        </Box>
+                      </Popup>
+                    </Marker>
+                  ))}
+                </MapContainer>
+              </Box>
+            );
+          })()}
+
           <Box
             sx={{
               display: "grid",

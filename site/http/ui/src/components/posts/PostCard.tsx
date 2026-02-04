@@ -184,6 +184,7 @@ export default function PostCard({
                           filter: "saturate(0.9) contrast(1.05)",
                         }}
                       />
+                      <div className="post-card__stamp-holo" />
                     </div>
                   </div>
                 )}

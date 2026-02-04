@@ -17,6 +17,7 @@ type mapPostResponse struct {
 	Username     string  `json:"username"`
 	MainImageURL string  `json:"main_image_url"`
 	FoundDate    string  `json:"found_date"`
+	Tier         int     `json:"tier"`
 }
 
 func (api *API) RegisterMapApi() {
@@ -60,6 +61,7 @@ func (api *API) handleMapPosts(w http.ResponseWriter, r *http.Request) {
 			"username":       "$user.login",
 			"main_image_url": "$post.main_image_url",
 			"found_date":     1,
+			"created":        "$post.created",
 		}},
 	}
 
@@ -86,8 +88,14 @@ func (api *API) handleMapPosts(w http.ResponseWriter, r *http.Request) {
 			Username:     strFromBson(doc["username"]),
 			MainImageURL: strFromBson(doc["main_image_url"]),
 		}
-		if fd, ok := doc["found_date"].(primitive.DateTime); ok {
+		fd, fdOk := doc["found_date"].(primitive.DateTime)
+		cd, cdOk := doc["created"].(primitive.DateTime)
+		if fdOk {
 			resp.FoundDate = fd.Time().UTC().Format(time.RFC3339)
+		}
+		if fdOk && cdOk {
+			ageSec := fd.Time().Sub(cd.Time()).Seconds()
+			resp.Tier = tierFromAge(ageSec)
 		}
 		results = append(results, resp)
 	}

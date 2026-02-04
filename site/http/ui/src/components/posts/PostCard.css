@@ -795,3 +795,48 @@
   pointer-events: none;
   z-index: 2;
 }
+
+/* ── holographic shimmer on flag ── */
+.post-card__stamp-holo {
+  position: absolute;
+  inset: 12%;
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 3;
+  background-image:
+    repeating-linear-gradient(
+      115deg,
+      hsl(2, 70%, 70%) 0%,
+      hsl(53, 75%, 65%) 10%,
+      hsl(93, 65%, 65%) 20%,
+      hsl(176, 70%, 70%) 30%,
+      hsl(228, 75%, 70%) 40%,
+      hsl(283, 70%, 70%) 50%,
+      hsl(326, 70%, 65%) 60%,
+      hsl(2, 70%, 70%) 70%
+    ),
+    radial-gradient(
+      farthest-corner circle at var(--pointer-x) var(--pointer-y),
+      hsla(0, 0%, 100%, 0.6) 0%,
+      hsla(0, 0%, 100%, 0.2) 40%,
+      transparent 70%
+    );
+  background-blend-mode: multiply;
+  background-size: 250% 250%, 350% 350%;
+  background-position:
+    calc(20% + var(--pointer-from-left, 0.5) * 60%)
+    calc(20% + var(--pointer-from-top, 0.5) * 60%),
+    calc(var(--pointer-from-left, 0.5) * 100%)
+    calc(var(--pointer-from-top, 0.5) * 100%);
+  filter: brightness(1.1) contrast(1.2) saturate(0.55);
+  mix-blend-mode: color-dodge;
+  opacity: calc(var(--card-opacity, 0) * 0.7);
+  transition: opacity 0.3s ease;
+}
+
+/* enhanced shimmer for higher tiers */
+.post-card[data-tier="3"] .post-card__stamp-holo,
+.post-card[data-tier="4"] .post-card__stamp-holo {
+  filter: brightness(1.2) contrast(1.3) saturate(0.65);
+  opacity: calc(var(--card-opacity, 0) * 0.8);
+}

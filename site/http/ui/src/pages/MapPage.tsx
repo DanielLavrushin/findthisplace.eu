@@ -8,7 +8,11 @@ import {
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import markerIcon from "../../assets/marker.png";
+import tire0marker from "../../assets/tire0marker.png";
+import tire1marker from "../../assets/tire1marker.png";
+import tire2marker from "../../assets/tire2marker.png";
+import tire3marker from "../../assets/tire3marker.png";
+import tire4marker from "../../assets/tire4marker.png";
 import SearchersList from "../components/searchers/SearchersList";
 import AuthorsList from "../components/authors/AuthorsList";
 import CountriesList from "../components/countries/CountriesList";
@@ -21,6 +25,7 @@ interface MapPost {
   username: string;
   main_image_url: string;
   found_date: string;
+  tier: number;
 }
 
 const periods = [
@@ -39,12 +44,23 @@ function FitBounds({ posts }: { posts: MapPost[] }) {
   return null;
 }
 
-const customIcon = new L.Icon({
-  iconUrl: markerIcon,
-  iconSize: [32, 32],
-  iconAnchor: [16, 32],
-  popupAnchor: [0, -32],
-});
+const tierIcons = [
+  tire0marker,
+  tire1marker,
+  tire2marker,
+  tire3marker,
+  tire4marker,
+];
+
+const tierLeafletIcons = tierIcons.map(
+  (icon) =>
+    new L.Icon({
+      iconUrl: icon,
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+      popupAnchor: [0, -32],
+    }),
+);
 
 export default function MapPage() {
   const [posts, setPosts] = useState<MapPost[]>([]);
@@ -79,20 +95,41 @@ export default function MapPage() {
             <Marker
               key={post.id}
               position={[post.latitude, post.longitude]}
-              icon={customIcon}
+              icon={tierLeafletIcons[post.tier] ?? tierLeafletIcons[0]}
             >
               <Popup>
-                <strong>{post.title}</strong>
-                <br />
-                {post.username && (
-                  <>
-                    by {post.username}
-                    <br />
-                  </>
-                )}
-                {post.found_date && (
-                  <>{new Date(post.found_date).toLocaleDateString()}</>
-                )}
+                <Box sx={{ minWidth: 150 }}>
+                  {post.main_image_url && (
+                    <img
+                      src={post.main_image_url}
+                      alt=""
+                      style={{
+                        width: "100%",
+                        maxHeight: 100,
+                        objectFit: "cover",
+                        borderRadius: 4,
+                        marginBottom: 8,
+                      }}
+                    />
+                  )}
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                    {post.title || `Пост #${post.id}`}
+                  </Typography>
+                  {post.username && (
+                    <Typography variant="caption" color="text.secondary">
+                      {post.username}
+                    </Typography>
+                  )}
+                  {post.found_date && (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ display: "block" }}
+                    >
+                      {new Date(post.found_date).toLocaleDateString("ru-RU")}
+                    </Typography>
+                  )}
+                </Box>
               </Popup>
             </Marker>
           ))}
