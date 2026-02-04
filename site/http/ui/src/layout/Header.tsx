@@ -1,6 +1,7 @@
 import { AppBar, Toolbar, Typography, Button, Box } from "@mui/material";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import logo from "../../assets/ftp-logo.png";
+import { useAuth } from "../contexts/AuthContext";
 
 const navItems = [
   { label: "Не найдено", path: "/not-found" },
@@ -12,6 +13,13 @@ const navItems = [
 
 export default function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, isAdmin, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/map");
+  };
 
   return (
     <AppBar position="static" color="default" elevation={1}>
@@ -37,7 +45,7 @@ export default function Header() {
             FindThisPlace
           </Typography>
         </Box>
-        <Box sx={{ display: "flex", gap: 1 }}>
+        <Box sx={{ display: "flex", gap: 1, flexGrow: 1 }}>
           {navItems.map((item) => (
             <Button
               key={item.path}
@@ -49,6 +57,37 @@ export default function Header() {
               {item.label}
             </Button>
           ))}
+          {isAdmin && (
+            <Button
+              component={Link}
+              to="/admin"
+              color={location.pathname === "/admin" ? "primary" : "inherit"}
+              variant={location.pathname === "/admin" ? "outlined" : "text"}
+            >
+              Админка
+            </Button>
+          )}
+        </Box>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          {user ? (
+            <>
+              <Typography variant="body2" color="text.secondary">
+                {user.username}
+              </Typography>
+              <Button color="inherit" onClick={handleLogout}>
+                Выйти
+              </Button>
+            </>
+          ) : (
+            <Button
+              component={Link}
+              to="/login"
+              color={location.pathname === "/login" ? "primary" : "inherit"}
+              variant={location.pathname === "/login" ? "outlined" : "text"}
+            >
+              Войти
+            </Button>
+          )}
         </Box>
       </Toolbar>
     </AppBar>

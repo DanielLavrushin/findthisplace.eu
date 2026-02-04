@@ -8,7 +8,10 @@ export interface NotFoundPost {
   gender: string;
   created_date: string;
   is_found: boolean;
+  found_date?: string;
+  found_by?: string;
   tier: number;
+  country_code?: string;
 }
 
 async function fetchNotFoundPosts(): Promise<NotFoundPost[]> {

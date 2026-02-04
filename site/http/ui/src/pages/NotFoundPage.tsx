@@ -1,5 +1,5 @@
-import PostCardList from "../components/posts/PostCardList";
+import NotFoundList from "../components/posts/NotFoundList";
 
 export default function NotFoundPage() {
-  return <PostCardList />;
+  return <NotFoundList />;
 }

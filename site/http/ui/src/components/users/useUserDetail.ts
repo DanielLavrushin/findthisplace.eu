@@ -14,6 +14,7 @@ export interface UserPost {
   latitude?: number;
   tier: number;
   role: "author" | "finder";
+  country_code?: string;
 }
 
 export interface UserDetail {

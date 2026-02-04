@@ -33,7 +33,9 @@ export default function SearcherDetailPage() {
 
   const foundPosts = useMemo(
     () => {
-      const all = user?.posts.filter((p) => p.role === "finder") ?? [];
+      const all = (user?.posts.filter((p) => p.role === "finder") ?? []).map(
+        (p) => ({ ...p, found_by: user?.login })
+      );
       if (activeTier === null) return all;
       return all.filter((p) => p.tier === activeTier);
     },

@@ -34,6 +34,10 @@ func (api *API) handleGetSettings(w http.ResponseWriter, r *http.Request) {
 }
 
 func (api *API) handleUpdateSetting(w http.ResponseWriter, r *http.Request) {
+	if !api.requireAdmin(w, r) {
+		return
+	}
+
 	var req settings.Setting
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)

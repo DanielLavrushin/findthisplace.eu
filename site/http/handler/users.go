@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -47,6 +48,7 @@ type userPostResponse struct {
 	Latitude     float64 `json:"latitude,omitempty"`
 	Tier         int     `json:"tier"`
 	Role         string  `json:"role"`
+	CountryCode  string  `json:"country_code,omitempty"`
 }
 
 type userDetailResponse struct {
@@ -67,6 +69,22 @@ type userDetailResponse struct {
 	Posts             []userPostResponse `json:"posts"`
 }
 
+// countryCodeFromTags extracts the country code from a tags array by matching against countryLookup
+func countryCodeFromTags(tags interface{}) string {
+	arr, ok := tags.(primitive.A)
+	if !ok {
+		return ""
+	}
+	for _, t := range arr {
+		if tag, ok := t.(string); ok {
+			if info, found := countryLookup[strings.ToLower(tag)]; found {
+				return strings.ToLower(info.Code)
+			}
+		}
+	}
+	return ""
+}
+
 func (api *API) RegisterUsersApi() {
 	api.mux.HandleFunc("GET /api/users/searchers", api.handleSearchers)
 	api.mux.HandleFunc("GET /api/users/searchers/{limit}", api.handleSearchers)
@@ -81,12 +99,65 @@ func (api *API) handleSearchers(w http.ResponseWriter, r *http.Request) {
 		limit, _ = strconv.Atoi(v)
 	}
 
+	hiddenTags, _ := api.settings.GetHiddenTags(r.Context())
+
+	// Build pipeline to compute searcher stats dynamically, filtering hidden tags
 	pipeline := bson.A{
-		bson.M{"$match": bson.M{
-			"found_tiers_total": bson.M{"$gt": 0},
+		bson.M{"$match": bson.M{"is_found": true, "found_by_id": bson.M{"$exists": true, "$ne": 0}}},
+		bson.M{"$lookup": bson.M{
+			"from":         "dirty_posts",
+			"localField":   "_id",
+			"foreignField": "_id",
+			"as":           "post",
 		}},
-		bson.M{"$sort": bson.M{"found_tiers_total": -1}},
+		bson.M{"$unwind": bson.M{
+			"path":                       "$post",
+			"preserveNullAndEmptyArrays": false,
+		}},
 	}
+
+	if len(hiddenTags) > 0 {
+		tagsBson := make(bson.A, len(hiddenTags))
+		for i, t := range hiddenTags {
+			tagsBson[i] = t
+		}
+		pipeline = append(pipeline, bson.M{"$match": bson.M{"post.tags": bson.M{"$nin": tagsBson}}})
+	}
+
+	pipeline = append(pipeline,
+		// Calculate tier based on time difference
+		bson.M{"$addFields": bson.M{
+			"search_time": bson.M{"$divide": bson.A{
+				bson.M{"$subtract": bson.A{"$found_date", "$post.created"}},
+				1000,
+			}},
+		}},
+		bson.M{"$addFields": bson.M{
+			"tier": bson.M{"$switch": bson.M{
+				"branches": bson.A{
+					bson.M{"case": bson.M{"$lt": bson.A{"$search_time", 6 * 30 * 24 * 3600}}, "then": 0},
+					bson.M{"case": bson.M{"$lt": bson.A{"$search_time", 12 * 30 * 24 * 3600}}, "then": 1},
+					bson.M{"case": bson.M{"$lt": bson.A{"$search_time", 2 * 365 * 24 * 3600}}, "then": 2},
+					bson.M{"case": bson.M{"$lt": bson.A{"$search_time", 5 * 365 * 24 * 3600}}, "then": 3},
+				},
+				"default": 4,
+			}},
+		}},
+		bson.M{"$group": bson.M{
+			"_id":             "$found_by_id",
+			"found_tier0":     bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$tier", 0}}, 1, 0}}},
+			"found_tier1":     bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$tier", 1}}, 1, 0}}},
+			"found_tier2":     bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$tier", 2}}, 1, 0}}},
+			"found_tier3":     bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$tier", 3}}, 1, 0}}},
+			"found_tier4":     bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$tier", 4}}, 1, 0}}},
+			"avg_search_time": bson.M{"$avg": "$search_time"},
+		}},
+		bson.M{"$addFields": bson.M{
+			"found_tiers_total": bson.M{"$add": bson.A{"$found_tier0", "$found_tier1", "$found_tier2", "$found_tier3", "$found_tier4"}},
+		}},
+		bson.M{"$match": bson.M{"found_tiers_total": bson.M{"$gt": 0}}},
+		bson.M{"$sort": bson.M{"found_tiers_total": -1}},
+	)
 
 	if limit > 0 {
 		pipeline = append(pipeline, bson.M{"$limit": limit})
@@ -117,7 +188,7 @@ func (api *API) handleSearchers(w http.ResponseWriter, r *http.Request) {
 		}},
 	)
 
-	cursor, err := api.store.FtpUsers.Aggregate(r.Context(), pipeline)
+	cursor, err := api.store.FtpPosts.Aggregate(r.Context(), pipeline)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -156,12 +227,49 @@ func (api *API) handleAuthors(w http.ResponseWriter, r *http.Request) {
 		limit, _ = strconv.Atoi(v)
 	}
 
+	hiddenTags, _ := api.settings.GetHiddenTags(r.Context())
+
+	// Build pipeline to compute author stats dynamically, filtering hidden tags
 	pipeline := bson.A{
-		bson.M{"$match": bson.M{
-			"author_posts_total": bson.M{"$gt": 0},
-		}},
-		bson.M{"$sort": bson.M{"author_posts_total": -1}},
+		bson.M{"$match": bson.M{"user_id": bson.M{"$exists": true, "$ne": 0}}},
 	}
+
+	if len(hiddenTags) > 0 {
+		tagsBson := make(bson.A, len(hiddenTags))
+		for i, t := range hiddenTags {
+			tagsBson[i] = t
+		}
+		pipeline = append(pipeline, bson.M{"$match": bson.M{"tags": bson.M{"$nin": tagsBson}}})
+	}
+
+	pipeline = append(pipeline,
+		bson.M{"$lookup": bson.M{
+			"from":         "ftp_posts",
+			"localField":   "_id",
+			"foreignField": "_id",
+			"as":           "ftp",
+		}},
+		bson.M{"$unwind": bson.M{
+			"path":                       "$ftp",
+			"preserveNullAndEmptyArrays": true,
+		}},
+		// Calculate author time for found posts
+		bson.M{"$addFields": bson.M{
+			"author_time": bson.M{"$cond": bson.M{
+				"if":   bson.M{"$eq": bson.A{"$ftp.is_found", true}},
+				"then": bson.M{"$divide": bson.A{bson.M{"$subtract": bson.A{"$ftp.found_date", "$created"}}, 1000}},
+				"else": nil,
+			}},
+		}},
+		bson.M{"$group": bson.M{
+			"_id":                "$user_id",
+			"author_posts_total": bson.M{"$sum": 1},
+			"author_posts_found": bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$ftp.is_found", true}}, 1, 0}}},
+			"avg_author_time":    bson.M{"$avg": "$author_time"},
+		}},
+		bson.M{"$match": bson.M{"author_posts_total": bson.M{"$gt": 0}}},
+		bson.M{"$sort": bson.M{"author_posts_total": -1}},
+	)
 
 	if limit > 0 {
 		pipeline = append(pipeline, bson.M{"$limit": limit})
@@ -188,7 +296,7 @@ func (api *API) handleAuthors(w http.ResponseWriter, r *http.Request) {
 		}},
 	)
 
-	cursor, err := api.store.FtpUsers.Aggregate(r.Context(), pipeline)
+	cursor, err := api.store.DirtyPosts.Aggregate(r.Context(), pipeline)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -226,6 +334,21 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "invalid user id", http.StatusBadRequest)
 		return
+	}
+
+	hiddenTags, _ := api.settings.GetHiddenTags(r.Context())
+	var hiddenTagsBson bson.A
+	if len(hiddenTags) > 0 {
+		hiddenTagsBson = make(bson.A, len(hiddenTags))
+		for i, t := range hiddenTags {
+			hiddenTagsBson[i] = t
+		}
+	}
+
+	hiddenPosts, _ := api.settings.GetHiddenNotFoundPosts(r.Context())
+	hiddenPostsSet := make(map[int]bool, len(hiddenPosts))
+	for _, pid := range hiddenPosts {
+		hiddenPostsSet[pid] = true
 	}
 
 	// Fetch user stats + profile (both author and searcher fields)
@@ -300,6 +423,11 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 	// Fetch posts created by this user
 	authoredPipeline := bson.A{
 		bson.M{"$match": bson.M{"user_id": id}},
+	}
+	if len(hiddenTagsBson) > 0 {
+		authoredPipeline = append(authoredPipeline, bson.M{"$match": bson.M{"tags": bson.M{"$nin": hiddenTagsBson}}})
+	}
+	authoredPipeline = append(authoredPipeline,
 		bson.M{"$lookup": bson.M{
 			"from":         "ftp_posts",
 			"localField":   "_id",
@@ -342,9 +470,10 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 			"found_by":       "$finder.login",
 			"longitude":      "$ftp.longitude",
 			"latitude":       "$ftp.latitude",
+			"tags":           1,
 		}},
 		bson.M{"$sort": bson.M{"created": -1}},
-	}
+	)
 
 	authoredCursor, err := api.store.DirtyPosts.Aggregate(r.Context(), authoredPipeline)
 	if err != nil {
@@ -370,8 +499,13 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 		}},
 		bson.M{"$unwind": bson.M{
 			"path":                       "$post",
-			"preserveNullAndEmptyArrays": true,
+			"preserveNullAndEmptyArrays": false,
 		}},
+	}
+	if len(hiddenTagsBson) > 0 {
+		foundPipeline = append(foundPipeline, bson.M{"$match": bson.M{"post.tags": bson.M{"$nin": hiddenTagsBson}}})
+	}
+	foundPipeline = append(foundPipeline,
 		bson.M{"$lookup": bson.M{
 			"from":         "dirty_users",
 			"localField":   "post.user_id",
@@ -393,9 +527,10 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 			"found_date":     1,
 			"longitude":      1,
 			"latitude":       1,
+			"tags":           "$post.tags",
 		}},
 		bson.M{"$sort": bson.M{"found_date": -1}},
-	}
+	)
 
 	foundCursor, err := api.store.FtpPosts.Aggregate(r.Context(), foundPipeline)
 	if err != nil {
@@ -415,8 +550,12 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 	now := time.Now()
 
 	for _, p := range authoredRaw {
+		postId := intFromBson(p["_id"])
+		if hiddenPostsSet[postId] {
+			continue
+		}
 		post := userPostResponse{
-			Id:           intFromBson(p["_id"]),
+			Id:           postId,
 			Title:        strFromBson(p["title"]),
 			MainImageURL: strFromBson(p["main_image_url"]),
 			Username:     strFromBson(p["username"]),
@@ -441,12 +580,19 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 		post.Longitude = floatFromBson(p["longitude"])
 		post.Latitude = floatFromBson(p["latitude"])
 		post.FoundBy = strFromBson(p["found_by"])
+		if post.IsFound {
+			post.CountryCode = countryCodeFromTags(p["tags"])
+		}
 		posts = append(posts, post)
 	}
 
 	for _, p := range foundRaw {
+		postId := intFromBson(p["_id"])
+		if hiddenPostsSet[postId] {
+			continue
+		}
 		post := userPostResponse{
-			Id:           intFromBson(p["_id"]),
+			Id:           postId,
 			Title:        strFromBson(p["title"]),
 			MainImageURL: strFromBson(p["main_image_url"]),
 			Username:     strFromBson(p["username"]),
@@ -470,6 +616,7 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 		}
 		post.Longitude = floatFromBson(p["longitude"])
 		post.Latitude = floatFromBson(p["latitude"])
+		post.CountryCode = countryCodeFromTags(p["tags"])
 		posts = append(posts, post)
 	}
 

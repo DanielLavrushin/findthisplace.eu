@@ -42,8 +42,9 @@ func Get[T any](ctx context.Context, m *Manager, name string) (T, error) {
 		}
 	}
 
-	// handle primitive.A → []int conversion
+	// handle primitive.A → []int or []string conversion
 	if arr, ok := setting.Value.(primitive.A); ok {
+		// Try []int conversion
 		ints := make([]int, 0, len(arr))
 		for _, v := range arr {
 			switch n := v.(type) {
@@ -56,6 +57,18 @@ func Get[T any](ctx context.Context, m *Manager, name string) (T, error) {
 			}
 		}
 		var converted interface{} = ints
+		if val, ok := converted.(T); ok {
+			return val, nil
+		}
+
+		// Try []string conversion
+		strs := make([]string, 0, len(arr))
+		for _, v := range arr {
+			if s, ok := v.(string); ok {
+				strs = append(strs, s)
+			}
+		}
+		converted = strs
 		if val, ok := converted.(T); ok {
 			return val, nil
 		}

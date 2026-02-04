@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import ReactCountryFlag from "react-country-flag";
 import type { NotFoundPost } from "./useNotFoundPosts";
 import tire0marker from "../../../assets/tire0marker.png";
 import tire1marker from "../../../assets/tire1marker.png";
@@ -48,13 +49,11 @@ function daysBetween(fromStr: string, toStr?: string): number {
 
 interface Props {
   post: NotFoundPost;
-  solvedBy?: string;
   foundDate?: string;
 }
 
 export default function PostCard({
   post,
-  solvedBy,
   foundDate,
 }: Readonly<Props>) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -171,34 +170,48 @@ export default function PostCard({
                     }}
                   />
                 )}
+                {post.is_found && post.country_code && (
+                  <div className="post-card__stamp">
+                    <div className="post-card__stamp-inner">
+                      <ReactCountryFlag
+                        countryCode={post.country_code.toUpperCase()}
+                        svg
+                        style={{
+                          width: "70%",
+                          height: "70%",
+                          objectFit: "cover",
+                          borderRadius: "2px",
+                          filter: "saturate(0.9) contrast(1.05)",
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="post-card__footer">
-                <a
-                  className="post-card__id"
-                  href={`https://findthisplace.d3.ru/${post.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  #{String(post.id).padStart(4, "0")}
-                </a>
-                <div className="post-card__footer-right">
-                  {solvedBy === undefined ? (
-                    <>
-                      <span className="post-card__author-label">
-                        {post.gender === "female" ? "Загадала" : "Загадал"}
-                      </span>
-                      <span className="post-card__author">{post.username}</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="post-card__author-label">Разгадал</span>
-                      <span className="post-card__author">{solvedBy}</span>
-                    </>
-                  )}
+                <div className="post-card__footer-left">
+                  <span className="post-card__author-label">
+                    {post.gender === "female" ? "Загадала" : "Загадал"}
+                  </span>
+                  <span className="post-card__author">{post.username}</span>
                 </div>
+                {post.found_by && (
+                  <div className="post-card__footer-right">
+                    <span className="post-card__author-label">Разгадал</span>
+                    <span className="post-card__author">{post.found_by}</span>
+                  </div>
+                )}
               </div>
+              <a
+                className="post-card__id"
+                href={`https://findthisplace.d3.ru/${post.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+              >
+                #{String(post.id).padStart(4, "0")}
+              </a>
             </div>
           </div>
 

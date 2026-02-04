@@ -7,6 +7,8 @@ const (
 	LastGrabberStatus = "last_grabber_status"
 
 	HiddenNotFoundPosts = "hidden_not_found_posts"
+	HiddenTags          = "hidden_tags"
+	AdminIds            = "admin_ids"
 )
 
 type Manager struct {

@@ -23,9 +23,9 @@ export default function AuthorDetailPage() {
 
   const unsolvedPosts = useMemo(
     () =>
-      (user?.posts.filter((p) => p.role === "author" && !p.is_found) ?? []).sort(
-        (a, b) => b.tier - a.tier,
-      ),
+      (
+        user?.posts.filter((p) => p.role === "author" && !p.is_found) ?? []
+      ).sort((a, b) => b.tier - a.tier),
     [user],
   );
 
@@ -55,9 +55,7 @@ export default function AuthorDetailPage() {
 
   const solvedPct =
     user.author_posts_total > 0
-      ? Math.round(
-          (user.author_posts_found / user.author_posts_total) * 100,
-        )
+      ? Math.round((user.author_posts_found / user.author_posts_total) * 100)
       : 0;
 
   return (
@@ -210,12 +208,7 @@ export default function AuthorDetailPage() {
             }}
           >
             {solvedPosts.map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                solvedBy={post.found_by}
-                foundDate={post.found_date}
-              />
+              <PostCard key={post.id} post={post} />
             ))}
           </Box>
         </>
