@@ -123,6 +123,24 @@ export default function PostCard({
     });
   }, []);
 
+  const handleCardClick = useCallback(() => {
+    window.open(
+      `https://findthisplace.d3.ru/${post.id}`,
+      "_blank",
+      "noopener,noreferrer",
+    );
+  }, [post.id]);
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        handleCardClick();
+      }
+    },
+    [handleCardClick],
+  );
+
   const days = post.created_date
     ? daysBetween(post.created_date, foundDate)
     : null;
@@ -142,6 +160,12 @@ export default function PostCard({
           className="post-card__rotator"
           onPointerMove={interact}
           onPointerLeave={interactEnd}
+          onClick={handleCardClick}
+          onKeyDown={handleKeyDown}
+          role="button"
+          tabIndex={0}
+          aria-label={`View post: ${post.title}`}
+          style={{ cursor: "pointer" }}
         >
           <div className="post-card__front">
             <div className="post-card__content">
