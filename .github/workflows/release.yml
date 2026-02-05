@@ -23,6 +23,22 @@ jobs:
         with:
           go-version: "1.25.3"
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 10.26.2
+
+      - name: Build frontend
+        run: |
+          cd site/http/ui
+          pnpm install
+          pnpm build
+
       - name: Validate version format
         run: |
           if ! [[ "${{ inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
@@ -33,7 +49,7 @@ jobs:
       - name: Create build directory
         run: mkdir -p build
 
-      - name: Build for Linux ARM64 (Raspberry Pi 5)
+      - name: Build
         env:
           VERSION: ${{ inputs.version }}
           VERSION_COMMIT: ${{ github.sha }}
