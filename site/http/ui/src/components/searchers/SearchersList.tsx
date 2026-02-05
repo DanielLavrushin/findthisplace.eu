@@ -43,17 +43,46 @@ interface SearchersListProps {
 function SearcherRow({
   s,
   i,
-}: {
+}: Readonly<{
   s: ReturnType<typeof useSearchers>["data"] extends (infer T)[] | undefined
     ? T
     : never;
   i: number;
-}) {
+}>) {
+  const tierBadges = tierIcons.map((icon, ti) => {
+    const count = [
+      s.found_tier0,
+      s.found_tier1,
+      s.found_tier2,
+      s.found_tier3,
+      s.found_tier4,
+    ][ti];
+    if (count === 0) return null;
+    return (
+      <Tooltip key={icon} title={tierLabels[ti]} arrow>
+        <Chip
+          size="small"
+          icon={<img src={icon} alt="" width={12} height={12} />}
+          label={count}
+          sx={{
+            height: 20,
+            bgcolor: `${tierColors[ti]}18`,
+            border: `1px solid ${tierColors[ti]}40`,
+            color: tierColors[ti],
+            fontWeight: 700,
+            fontSize: "0.7rem",
+            "& .MuiChip-icon": { ml: 0.5 },
+            "& .MuiChip-label": { px: 0.5 },
+          }}
+        />
+      </Tooltip>
+    );
+  });
+
   return (
     <Box
       sx={{
-        display: "grid",
-        gridTemplateColumns: "28px 32px 1fr auto auto auto",
+        display: "flex",
         alignItems: "center",
         gap: 1,
         px: 1,
@@ -69,17 +98,23 @@ function SearcherRow({
         "&:hover": { background: "action.hover" },
       }}
     >
+      {/* Rank */}
       <Typography
         sx={{
           fontWeight: 700,
-          fontSize: i < 3 ? "1.25rem" : "1rem",
+          fontSize: i < 3 ? "1.1rem" : "0.95rem",
+          width: 24,
           textAlign: "center",
           color: i < 3 ? medalColors[i] : "text.disabled",
+          flexShrink: 0,
+          alignSelf: { xs: "flex-start", sm: "center" },
+          mt: { xs: 0.5, sm: 0 },
         }}
       >
         {i + 1}
       </Typography>
 
+      {/* Avatar */}
       <Avatar
         src={s.avatar_url}
         alt={s.login}
@@ -88,102 +123,129 @@ function SearcherRow({
           height: 32,
           border: i < 3 ? `2px solid ${medalColors[i]}` : "2px solid",
           borderColor: i < 3 ? undefined : "divider",
+          flexShrink: 0,
+          alignSelf: { xs: "flex-start", sm: "center" },
+          mt: { xs: 0.25, sm: 0 },
         }}
       />
 
-      <Typography
-        component={RouterLink}
-        to={`/searchers/${s.id}`}
-        noWrap
-        sx={{
-          fontWeight: i < 3 ? 700 : 400,
-          fontSize: "0.9rem",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          textDecoration: "none",
-          color: "inherit",
-          "&:hover": { textDecoration: "underline" },
-        }}
-      >
-        {s.login}
-      </Typography>
-
-      <Tooltip title="Всего находок" arrow>
+      {/* Main content - responsive layout */}
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        {/* Desktop: single line */}
         <Box
-          sx={{ display: "flex", alignItems: "center", gap: 0.5 }}
+          sx={{
+            display: { xs: "none", sm: "flex" },
+            alignItems: "center",
+            gap: 1,
+            flexWrap: "wrap",
+          }}
         >
-          <img src={markerIcon} alt="" width={16} height={16} />
-          <Typography sx={{ fontWeight: 700, fontSize: "0.95rem" }}>
-            {s.found_tiers_total}
+          <Typography
+            component={RouterLink}
+            to={`/searchers/${s.id}`}
+            noWrap
+            sx={{
+              fontWeight: i < 3 ? 700 : 400,
+              fontSize: "0.9rem",
+              textDecoration: "none",
+              color: "inherit",
+              "&:hover": { textDecoration: "underline" },
+            }}
+          >
+            {s.login}
           </Typography>
-        </Box>
-      </Tooltip>
 
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 0.5,
-          flexWrap: "wrap",
-          justifyContent: "flex-end",
-        }}
-      >
-        {tierIcons.map((icon, ti) => {
-          const count = [
-            s.found_tier0,
-            s.found_tier1,
-            s.found_tier2,
-            s.found_tier3,
-            s.found_tier4,
-          ][ti];
-          if (count === 0) return null;
-          return (
-            <Tooltip key={ti} title={tierLabels[ti]} arrow>
+          <Tooltip title="Всего находок" arrow>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+              <img src={markerIcon} alt="" width={16} height={16} />
+              <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>
+                {s.found_tiers_total}
+              </Typography>
+            </Box>
+          </Tooltip>
+
+          {tierBadges}
+
+          <Tooltip title="Среднее время поиска" arrow>
+            <Chip
+              size="small"
+              icon={<AccessTimeIcon sx={{ fontSize: 12 }} />}
+              label={formatDuration(s.avg_search_time)}
+              variant="outlined"
+              sx={{
+                height: 20,
+                ml: "auto",
+                color: "text.secondary",
+                borderColor: "divider",
+                fontSize: "0.7rem",
+                "& .MuiChip-label": { px: 0.5 },
+              }}
+            />
+          </Tooltip>
+        </Box>
+
+        {/* Mobile: two lines */}
+        <Box sx={{ display: { xs: "block", sm: "none" } }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Typography
+              component={RouterLink}
+              to={`/searchers/${s.id}`}
+              noWrap
+              sx={{
+                fontWeight: i < 3 ? 700 : 400,
+                fontSize: "0.9rem",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                textDecoration: "none",
+                color: "inherit",
+                "&:hover": { textDecoration: "underline" },
+              }}
+            >
+              {s.login}
+            </Typography>
+
+            <Tooltip title="Всего находок" arrow>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, flexShrink: 0 }}>
+                <img src={markerIcon} alt="" width={16} height={16} />
+                <Typography sx={{ fontWeight: 700, fontSize: "0.9rem" }}>
+                  {s.found_tiers_total}
+                </Typography>
+              </Box>
+            </Tooltip>
+
+            <Tooltip title="Среднее время поиска" arrow>
               <Chip
                 size="small"
-                icon={<img src={icon} alt="" width={14} height={14} />}
-                label={count}
+                icon={<AccessTimeIcon sx={{ fontSize: 12 }} />}
+                label={formatDuration(s.avg_search_time)}
+                variant="outlined"
                 sx={{
-                  height: 22,
-                  bgcolor: `${tierColors[ti]}18`,
-                  border: `1px solid ${tierColors[ti]}40`,
-                  color: tierColors[ti],
-                  fontWeight: 700,
-                  fontSize: "0.75rem",
-                  "& .MuiChip-icon": { ml: 0.5 },
+                  height: 20,
+                  ml: "auto",
+                  color: "text.secondary",
+                  borderColor: "divider",
+                  fontSize: "0.7rem",
+                  flexShrink: 0,
                   "& .MuiChip-label": { px: 0.5 },
                 }}
               />
             </Tooltip>
-          );
-        })}
-      </Box>
+          </Box>
 
-      <Tooltip title="Среднее время поиска" arrow>
-        <Chip
-          size="small"
-          icon={<AccessTimeIcon sx={{ fontSize: 13 }} />}
-          label={formatDuration(s.avg_search_time)}
-          variant="outlined"
-          sx={{
-            height: 22,
-            justifySelf: "end",
-            color: "text.secondary",
-            borderColor: "divider",
-            fontSize: "0.75rem",
-            "& .MuiChip-label": { px: 0.5 },
-          }}
-        />
-      </Tooltip>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5, mt: 0.5, flexWrap: "wrap" }}>
+            {tierBadges}
+          </Box>
+        </Box>
+      </Box>
     </Box>
   );
 }
 
 function VirtualizedList({
   searchers,
-}: {
+}: Readonly<{
   searchers: NonNullable<ReturnType<typeof useSearchers>["data"]>;
-}) {
+}>) {
   const listRef = useRef<HTMLDivElement>(null);
   const virtualizer = useWindowVirtualizer({
     count: searchers.length,
@@ -221,7 +283,10 @@ function VirtualizedList({
   );
 }
 
-export default function SearchersList({ limit, title }: SearchersListProps) {
+export default function SearchersList({
+  limit,
+  title,
+}: Readonly<SearchersListProps>) {
   const { data: searchers = [] } = useSearchers(limit);
 
   if (searchers.length === 0) return null;

@@ -17,6 +17,12 @@ import (
 	"github.com/findthisplace.eu/settings"
 )
 
+var (
+	Version = "dev"
+	Commit  = "none"
+	Date    = "unknown"
+)
+
 var port int
 
 func main() {
@@ -39,7 +45,8 @@ func main() {
 	grabber.StartBackground(grabberCtx, store, sm)
 
 	cfg := &config.Config{
-		Port: port,
+		Port:    port,
+		Version: fmt.Sprintf("%s.%s", Version, Commit),
 	}
 
 	srv, err := ftphttp.StartServer(cfg, sm, store)

@@ -12,7 +12,8 @@ export default function Layout() {
         maxWidth="xl"
         sx={{
           flex: 1,
-          py: 4,
+          py: { xs: 2, sm: 3, md: 4 },
+          px: { xs: 2, sm: 3 },
         }}
       >
         <Outlet />

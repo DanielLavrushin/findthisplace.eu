@@ -7,38 +7,8 @@
       "request": "launch",
       "mode": "auto",
       "program": "${workspaceFolder}/site",
-      "env": {
-        "FTP_DB_ADDRESS": "localhost",
-        "FTP_DB_PORT": "27017"
-      },
+      "envFile": "${workspaceFolder}/.env",
       "args": ["--port", "8080"]
-    },
-    {
-      "name": "grabber: Full",
-      "type": "go",
-      "request": "launch",
-      "mode": "auto",
-      "program": "${workspaceFolder}/grabber/cmd",
-      "env": {},
-      "args": ["--full-run"]
-    },
-    {
-      "name": "Laun grabber: Partial",
-      "type": "go",
-      "request": "launch",
-      "mode": "auto",
-      "program": "${workspaceFolder}/grabber/cmd",
-      "env": {},
-      "args": []
-    },
-    {
-      "name": "grabber: Process Only",
-      "type": "go",
-      "request": "launch",
-      "mode": "auto",
-      "program": "${workspaceFolder}/grabber/cmd",
-      "env": {},
-      "args": ["--skip-load"]
     }
   ]
 }

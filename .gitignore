@@ -13,3 +13,4 @@ __debug_bin*
 .github/instructions/codacy.instructions.md
 
 build/
+.codacy/

@@ -28,6 +28,7 @@ func Connect(ctx context.Context, dbName string) (*DB, error) {
 	port := os.Getenv("FTP_DB_PORT")
 	user := os.Getenv("FTP_DB_USERNAME")
 	pass := os.Getenv("FTP_DB_PASSWORD")
+	log.Printf("DB connection params: host=%s port=%s user=%s", host, port, user)
 
 	var uri string
 	if user != "" && pass != "" {

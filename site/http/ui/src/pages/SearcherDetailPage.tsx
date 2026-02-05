@@ -9,14 +9,13 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useUserDetail } from "../components/users/useUserDetail";
+import SearcherStats from "../components/users/SearcherStats";
 import PostCard from "../components/posts/PostCard";
-import { formatDuration } from "../utils/formatDuration";
 import markerIcon from "../../assets/marker.png";
 import tire0marker from "../../assets/tire0marker.png";
 import tire1marker from "../../assets/tire1marker.png";
@@ -75,11 +74,11 @@ export default function SearcherDetailPage() {
   }
 
   const tiers = [
-    user.found_tier0,
-    user.found_tier1,
-    user.found_tier2,
-    user.found_tier3,
-    user.found_tier4,
+    { id: "tier0", tier: 0, count: user.found_tier0 },
+    { id: "tier1", tier: 1, count: user.found_tier1 },
+    { id: "tier2", tier: 2, count: user.found_tier2 },
+    { id: "tier3", tier: 3, count: user.found_tier3 },
+    { id: "tier4", tier: 4, count: user.found_tier4 },
   ];
 
   return (
@@ -146,10 +145,10 @@ export default function SearcherDetailPage() {
               display: "flex",
               alignItems: "center",
               gap: 0.5,
-              cursor: activeTier !== null ? "pointer" : "default",
-              opacity: activeTier !== null ? 0.5 : 1,
+              cursor: activeTier === null ? "default" : "pointer",
+              opacity: activeTier === null ? 1 : 0.5,
               transition: "opacity 0.2s",
-              "&:hover": activeTier !== null ? { opacity: 0.8 } : {},
+              "&:hover": activeTier === null ? {} : { opacity: 0.8 },
             }}
             onClick={() => setActiveTier(null)}
           >
@@ -162,26 +161,26 @@ export default function SearcherDetailPage() {
             </Typography>
           </Box>
 
-          {tiers.map((count, ti) => {
+          {tiers.map(({ id, tier, count }) => {
             if (count === 0) return null;
-            const isActive = activeTier === ti;
+            const isActive = activeTier === tier;
             const isDimmed = activeTier !== null && !isActive;
             return (
-              <Tooltip key={ti} title={tierLabels[ti]} arrow>
+              <Tooltip key={id} title={tierLabels[tier]} arrow>
                 <Chip
                   size="small"
                   icon={
-                    <img src={tierIcons[ti]} alt="" width={14} height={14} />
+                    <img src={tierIcons[tier]} alt="" width={14} height={14} />
                   }
                   label={count}
-                  onClick={() => setActiveTier(isActive ? null : ti)}
+                  onClick={() => setActiveTier(isActive ? null : tier)}
                   sx={{
                     height: 24,
                     bgcolor: isActive
-                      ? `${tierColors[ti]}30`
-                      : `${tierColors[ti]}18`,
-                    border: `1px solid ${isActive ? tierColors[ti] : `${tierColors[ti]}40`}`,
-                    color: tierColors[ti],
+                      ? `${tierColors[tier]}30`
+                      : `${tierColors[tier]}18`,
+                    border: `1px solid ${isActive ? tierColors[tier] : `${tierColors[tier]}40`}`,
+                    color: tierColors[tier],
                     fontWeight: 700,
                     fontSize: "0.8rem",
                     opacity: isDimmed ? 0.4 : 1,
@@ -196,22 +195,10 @@ export default function SearcherDetailPage() {
             );
           })}
 
-          {user.avg_search_time > 0 && (
-            <Chip
-              size="small"
-              icon={<AccessTimeIcon sx={{ fontSize: 14 }} />}
-              label={formatDuration(user.avg_search_time)}
-              variant="outlined"
-              sx={{
-                height: 24,
-                fontSize: "0.8rem",
-                color: "text.secondary",
-                borderColor: "divider",
-              }}
-            />
-          )}
         </Box>
       </Paper>
+
+      <SearcherStats posts={user.posts} avgSearchTime={user.avg_search_time} />
 
       {foundPosts.length > 0 && (
         <>
