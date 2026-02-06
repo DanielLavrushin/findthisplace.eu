@@ -434,6 +434,24 @@ func (api *API) handleAdminPostEdit(w http.ResponseWriter, r *http.Request) {
 
 	update["manual_override"] = true
 
+	var current bson.M
+	if err := api.store.FtpPosts.FindOne(r.Context(), bson.M{"_id": id}).Decode(&current); err == nil {
+		merged := bson.M{}
+		for k, v := range current {
+			merged[k] = v
+		}
+		for k, v := range update {
+			merged[k] = v
+		}
+		lat := floatFromBson(merged["latitude"])
+		lng := floatFromBson(merged["longitude"])
+		foundByID := intFromBson(merged["found_by_id"])
+		_, hasFoundDate := merged["found_date"]
+		if lat != 0 && lng != 0 && foundByID != 0 && hasFoundDate {
+			update["is_found"] = true
+		}
+	}
+
 	result, err := api.store.FtpPosts.UpdateOne(
 		r.Context(),
 		bson.M{"_id": id},
