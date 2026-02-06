@@ -59,7 +59,6 @@ export default function PostCard({
   const cardRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
   const [interacting, setInteracting] = useState(false);
-  const [style, setStyle] = useState<Record<string, string>>({});
 
   const interact = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     setInteracting(true);
@@ -83,20 +82,21 @@ export default function PostCard({
 
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(() => {
-      setStyle({
-        "--pointer-x": `${round(percent.x)}%`,
-        "--pointer-y": `${round(percent.y)}%`,
-        "--pointer-from-center": `${round(fromCenter)}`,
-        "--pointer-from-top": `${round(percent.y / 100)}`,
-        "--pointer-from-left": `${round(percent.x / 100)}`,
-        "--card-opacity": "1",
-        "--rotate-x": `${round(-(center.x / 3.5))}deg`,
-        "--rotate-y": `${round(center.y / 3.5)}deg`,
-        "--background-x": `${adjust(percent.x, 0, 100, 37, 63)}%`,
-        "--background-y": `${adjust(percent.y, 0, 100, 33, 67)}%`,
-        "--card-scale": "1.05",
-        "--translate-y": "-5px",
-      });
+      const card = cardRef.current;
+      if (!card) return;
+      const s = card.style;
+      s.setProperty("--pointer-x", `${round(percent.x)}%`);
+      s.setProperty("--pointer-y", `${round(percent.y)}%`);
+      s.setProperty("--pointer-from-center", `${round(fromCenter)}`);
+      s.setProperty("--pointer-from-top", `${round(percent.y / 100)}`);
+      s.setProperty("--pointer-from-left", `${round(percent.x / 100)}`);
+      s.setProperty("--card-opacity", "1");
+      s.setProperty("--rotate-x", `${round(-(center.x / 3.5))}deg`);
+      s.setProperty("--rotate-y", `${round(center.y / 3.5)}deg`);
+      s.setProperty("--background-x", `${adjust(percent.x, 0, 100, 37, 63)}%`);
+      s.setProperty("--background-y", `${adjust(percent.y, 0, 100, 33, 67)}%`);
+      s.setProperty("--card-scale", "1.05");
+      s.setProperty("--translate-y", "-5px");
       rafRef.current = null;
     });
   }, []);
@@ -107,20 +107,21 @@ export default function PostCard({
       rafRef.current = null;
     }
     setInteracting(false);
-    setStyle({
-      "--pointer-x": "50%",
-      "--pointer-y": "50%",
-      "--pointer-from-center": "0",
-      "--pointer-from-top": "0.5",
-      "--pointer-from-left": "0.5",
-      "--card-opacity": "0",
-      "--rotate-x": "0deg",
-      "--rotate-y": "0deg",
-      "--background-x": "50%",
-      "--background-y": "50%",
-      "--card-scale": "1",
-      "--translate-y": "0px",
-    });
+    const card = cardRef.current;
+    if (!card) return;
+    const s = card.style;
+    s.setProperty("--pointer-x", "50%");
+    s.setProperty("--pointer-y", "50%");
+    s.setProperty("--pointer-from-center", "0");
+    s.setProperty("--pointer-from-top", "0.5");
+    s.setProperty("--pointer-from-left", "0.5");
+    s.setProperty("--card-opacity", "0");
+    s.setProperty("--rotate-x", "0deg");
+    s.setProperty("--rotate-y", "0deg");
+    s.setProperty("--background-x", "50%");
+    s.setProperty("--background-y", "50%");
+    s.setProperty("--card-scale", "1");
+    s.setProperty("--translate-y", "0px");
   }, []);
 
   const handleCardClick = useCallback(() => {
@@ -142,7 +143,7 @@ export default function PostCard({
   );
 
   const days = post.created_date
-    ? daysBetween(post.created_date, foundDate)
+    ? daysBetween(post.created_date, post.found_date ?? foundDate)
     : null;
   const marker = tierMarkers[post.tier] ?? tierMarkers[0];
 
@@ -152,7 +153,7 @@ export default function PostCard({
       className={`post-card${interacting ? " interacting" : ""}`}
       data-tier={post.tier}
       style={
-        { "--glitter": `url(${glitterImg})`, ...style } as React.CSSProperties
+        { "--glitter": `url(${glitterImg})` } as React.CSSProperties
       }
     >
       <div className="post-card__translater">

@@ -44,9 +44,14 @@ func main() {
 	defer grabberCancel()
 	grabber.StartBackground(grabberCtx, store, sm)
 
+	commitShort := Commit
+	if len(commitShort) > 7 {
+		commitShort = commitShort[:7]
+	}
+
 	cfg := &config.Config{
 		Port:    port,
-		Version: fmt.Sprintf("%s.%s", Version, Commit),
+		Version: fmt.Sprintf("%s.%s", Version, commitShort),
 	}
 
 	srv, err := ftphttp.StartServer(cfg, sm, store)

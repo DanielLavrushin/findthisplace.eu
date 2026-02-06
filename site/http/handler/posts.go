@@ -66,6 +66,7 @@ func (api *API) handleNotFoundPosts(w http.ResponseWriter, r *http.Request) {
 			"path":                       "$post",
 			"preserveNullAndEmptyArrays": false,
 		}},
+		bson.M{"$match": bson.M{"post.tags": "не найдено"}},
 	}
 
 	if len(hiddenTags) > 0 {
@@ -272,14 +273,21 @@ func (api *API) handleProblematicPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hiddenTags, _ := api.settings.GetHiddenTags(r.Context())
+
 	pipeline := bson.A{
 		bson.M{"$match": bson.M{
-			"is_found": true,
 			"$or": bson.A{
-				bson.M{"longitude": bson.M{"$exists": false}},
-				bson.M{"latitude": bson.M{"$exists": false}},
-				bson.M{"longitude": 0},
-				bson.M{"latitude": 0},
+				bson.M{
+					"is_found": true,
+					"$or": bson.A{
+						bson.M{"longitude": bson.M{"$exists": false}},
+						bson.M{"latitude": bson.M{"$exists": false}},
+						bson.M{"longitude": 0},
+						bson.M{"latitude": 0},
+					},
+				},
+				bson.M{"is_found": bson.M{"$ne": true}},
 			},
 		}},
 		bson.M{"$lookup": bson.M{
@@ -292,6 +300,23 @@ func (api *API) handleProblematicPosts(w http.ResponseWriter, r *http.Request) {
 			"path":                       "$post",
 			"preserveNullAndEmptyArrays": false,
 		}},
+		bson.M{"$match": bson.M{
+			"$or": bson.A{
+				bson.M{"is_found": true},
+				bson.M{"post.tags": bson.M{"$ne": "не найдено"}},
+			},
+		}},
+	}
+
+	if len(hiddenTags) > 0 {
+		tagsBson := make(bson.A, len(hiddenTags))
+		for i, t := range hiddenTags {
+			tagsBson[i] = t
+		}
+		pipeline = append(pipeline, bson.M{"$match": bson.M{"post.tags": bson.M{"$nin": tagsBson}}})
+	}
+
+	pipeline = append(pipeline,
 		bson.M{"$lookup": bson.M{
 			"from":         "dirty_users",
 			"localField":   "post.user_id",
@@ -312,7 +337,7 @@ func (api *API) handleProblematicPosts(w http.ResponseWriter, r *http.Request) {
 			"is_found":       1,
 		}},
 		bson.M{"$sort": bson.M{"created": -1}},
-	}
+	)
 
 	cursor, err := api.store.FtpPosts.Aggregate(r.Context(), pipeline)
 	if err != nil {
@@ -327,16 +352,26 @@ func (api *API) handleProblematicPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hidden, _ := api.settings.GetHiddenNotFoundPosts(r.Context())
+	hiddenSet := make(map[int]bool, len(hidden))
+	for _, id := range hidden {
+		hiddenSet[id] = true
+	}
+
 	now := time.Now()
 	results := make([]notFoundPostResponse, 0, len(raw))
 	for _, doc := range raw {
+		id := intFromBson(doc["_id"])
+		if hiddenSet[id] {
+			continue
+		}
 		resp := notFoundPostResponse{
-			Id:           intFromBson(doc["_id"]),
+			Id:           id,
 			Title:        strFromBson(doc["title"]),
 			MainImageURL: strFromBson(doc["main_image_url"]),
 			Username:     strFromBson(doc["username"]),
 			Gender:       strFromBson(doc["gender"]),
-			IsFound:      true,
+			IsFound:      boolFromBson(doc["is_found"]),
 		}
 		if created, ok := doc["created"].(primitive.DateTime); ok {
 			t := created.Time()
