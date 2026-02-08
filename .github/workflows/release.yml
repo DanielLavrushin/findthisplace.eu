@@ -79,6 +79,9 @@ jobs:
             build/findthisplace
             build/findthisplace.md5
 
+      - name: Wait for release assets to propagate
+        run: sleep 60
+
       - name: Trigger deployment
         env:
           WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
