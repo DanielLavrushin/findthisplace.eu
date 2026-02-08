@@ -41,16 +41,14 @@ func (api *API) handleWebhookUpdate(w http.ResponseWriter, r *http.Request) {
 		script = "/var/www/findthisplace.eu/update.sh"
 	}
 
-	cmd := exec.Command("/bin/bash", script)
+	cmd := exec.Command("systemd-run", "--unit=findthisplace-update", "--description=findthisplace update", "/bin/bash", script)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	if err := cmd.Start(); err != nil {
+	if err := cmd.Run(); err != nil {
 		log.Printf("webhook: failed to start update script: %v", err)
 		http.Error(w, "failed to start update", http.StatusInternalServerError)
 		return
 	}
-
-	go cmd.Wait()
 
 	log.Println("webhook: update triggered")
 	w.WriteHeader(http.StatusOK)
