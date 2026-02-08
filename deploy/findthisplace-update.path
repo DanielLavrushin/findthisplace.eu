@@ -2,7 +2,7 @@
 Description=Watch for findthisplace update trigger
 
 [Path]
-PathExists=/tmp/findthisplace-update-trigger
+PathExists=/run/findthisplace-update-trigger
 
 [Install]
 WantedBy=multi-user.target
