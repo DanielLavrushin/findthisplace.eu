@@ -156,13 +156,13 @@ export default function MapPage() {
 
       <Box sx={{ display: "flex", gap: 3, mt: 4, flexWrap: "wrap", alignItems: "stretch" }}>
         <Box sx={{ flex: 1, minWidth: 300, display: "flex" }}>
-          <SearchersList limit={10} title="Top 10 Сыщиков" />
+          <SearchersList limit={10} title="Top 10 Сыщиков" viewAllLink="/searchers" />
         </Box>
         <Box sx={{ flex: 1, minWidth: 300, display: "flex" }}>
-          <AuthorsList limit={10} title="Top 10 Авторов" />
+          <AuthorsList limit={10} title="Top 10 Авторов" viewAllLink="/authors" />
         </Box>
         <Box sx={{ flex: "0 1 280px", minWidth: 240, display: "flex" }}>
-          <CountriesList limit={10} title="ТОП 10 Стран" />
+          <CountriesList limit={10} title="ТОП 10 Стран" viewAllLink="/tags" />
         </Box>
       </Box>
     </Box>

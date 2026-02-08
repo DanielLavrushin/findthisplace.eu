@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import ReactCountryFlag from "react-country-flag";
 import type { NotFoundPost } from "./useNotFoundPosts";
 import tire0marker from "../../../assets/tire0marker.png";
@@ -220,12 +221,32 @@ export default function PostCard({
                   <span className="post-card__author-label">
                     {post.gender === "female" ? "Загадала" : "Загадал"}
                   </span>
-                  <span className="post-card__author">{post.username}</span>
+                  {post.user_id ? (
+                    <Link
+                      className="post-card__author post-card__author--link"
+                      to={`/authors/${post.user_id}`}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {post.username}
+                    </Link>
+                  ) : (
+                    <span className="post-card__author">{post.username}</span>
+                  )}
                 </div>
                 {post.found_by && (
                   <div className="post-card__footer-right">
                     <span className="post-card__author-label">Разгадал</span>
-                    <span className="post-card__author">{post.found_by}</span>
+                    {post.found_by_id ? (
+                      <Link
+                        className="post-card__author post-card__author--link"
+                        to={`/searchers/${post.found_by_id}`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {post.found_by}
+                      </Link>
+                    ) : (
+                      <span className="post-card__author">{post.found_by}</span>
+                    )}
                   </div>
                 )}
               </div>

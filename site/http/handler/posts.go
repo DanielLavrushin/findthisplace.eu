@@ -21,6 +21,7 @@ type notFoundPostResponse struct {
 	Id           int     `json:"id"`
 	Title        string  `json:"title"`
 	MainImageURL string  `json:"main_image_url"`
+	UserID       int     `json:"user_id,omitempty"`
 	Username     string  `json:"username"`
 	Gender       string  `json:"gender"`
 	CreatedDate  string  `json:"created_date"`
@@ -92,6 +93,7 @@ func (api *API) handleNotFoundPosts(w http.ResponseWriter, r *http.Request) {
 			"_id":            1,
 			"title":          "$post.title",
 			"main_image_url": "$post.main_image_url",
+			"user_id":        "$post.user_id",
 			"username":       "$user.login",
 			"gender":         "$user.gender",
 			"created":        "$post.created",
@@ -130,6 +132,7 @@ func (api *API) handleNotFoundPosts(w http.ResponseWriter, r *http.Request) {
 			Id:           id,
 			Title:        strFromBson(doc["title"]),
 			MainImageURL: strFromBson(doc["main_image_url"]),
+			UserID:       intFromBson(doc["user_id"]),
 			Username:     strFromBson(doc["username"]),
 			Gender:       strFromBson(doc["gender"]),
 		}
@@ -202,6 +205,7 @@ func (api *API) handleGetPost(w http.ResponseWriter, r *http.Request) {
 			"_id":            1,
 			"title":          "$post.title",
 			"main_image_url": "$post.main_image_url",
+			"user_id":        "$post.user_id",
 			"username":       "$user.login",
 			"gender":         "$user.gender",
 			"created":        "$post.created",
@@ -238,6 +242,7 @@ func (api *API) handleGetPost(w http.ResponseWriter, r *http.Request) {
 		Id:           intFromBson(doc["_id"]),
 		Title:        strFromBson(doc["title"]),
 		MainImageURL: strFromBson(doc["main_image_url"]),
+		UserID:       intFromBson(doc["user_id"]),
 		Username:     strFromBson(doc["username"]),
 		Gender:       strFromBson(doc["gender"]),
 		Latitude:     floatFromBson(doc["latitude"]),
@@ -331,6 +336,7 @@ func (api *API) handleProblematicPosts(w http.ResponseWriter, r *http.Request) {
 			"_id":            1,
 			"title":          "$post.title",
 			"main_image_url": "$post.main_image_url",
+			"user_id":        "$post.user_id",
 			"username":       "$user.login",
 			"gender":         "$user.gender",
 			"created":        "$post.created",
@@ -369,6 +375,7 @@ func (api *API) handleProblematicPosts(w http.ResponseWriter, r *http.Request) {
 			Id:           id,
 			Title:        strFromBson(doc["title"]),
 			MainImageURL: strFromBson(doc["main_image_url"]),
+			UserID:       intFromBson(doc["user_id"]),
 			Username:     strFromBson(doc["username"]),
 			Gender:       strFromBson(doc["gender"]),
 			IsFound:      boolFromBson(doc["is_found"]),

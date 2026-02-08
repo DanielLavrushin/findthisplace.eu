@@ -1,5 +1,7 @@
-import { Box, Paper, Tooltip, Typography } from "@mui/material";
+import { Box, Button, Paper, Tooltip, Typography } from "@mui/material";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import ReactCountryFlag from "react-country-flag";
+import { Link as RouterLink } from "react-router-dom";
 import { useCountries } from "./useCountries";
 import markerIcon from "../../../assets/marker.png";
 
@@ -11,6 +13,7 @@ interface CountriesListProps {
   showBars?: boolean;
   columns?: 1 | 2;
   startIndex?: number;
+  viewAllLink?: string;
 }
 
 function CountryRow({
@@ -151,6 +154,7 @@ export default function CountriesList({
   showBars = false,
   columns = 1,
   startIndex = 0,
+  viewAllLink,
 }: CountriesListProps) {
   const { data: countries = [] } = useCountries();
 
@@ -207,6 +211,8 @@ export default function CountriesList({
         borderColor: "divider",
         width: "100%",
         flex: 1,
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       {title && (
@@ -224,6 +230,17 @@ export default function CountriesList({
         </Typography>
       )}
       {content}
+
+      {viewAllLink && (
+        <Button
+          component={RouterLink}
+          to={viewAllLink}
+          endIcon={<ArrowForwardIcon />}
+          sx={{ mt: "auto", pt: 2, display: "flex", mx: "auto" }}
+        >
+          Смотреть все
+        </Button>
+      )}
     </Paper>
   );
 }

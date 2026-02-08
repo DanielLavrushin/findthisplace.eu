@@ -11,6 +11,8 @@ import {
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Link as RouterLink } from "react-router-dom";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import Button from "@mui/material/Button";
 import markerIcon from "../../../assets/marker.png";
 import tire0marker from "../../../assets/tire0marker.png";
 import tire1marker from "../../../assets/tire1marker.png";
@@ -38,6 +40,7 @@ const VIRTUALIZE_THRESHOLD = 50;
 interface SearchersListProps {
   limit?: number;
   title?: string;
+  viewAllLink?: string;
 }
 
 function SearcherRow({
@@ -286,6 +289,7 @@ function VirtualizedList({
 export default function SearchersList({
   limit,
   title,
+  viewAllLink,
 }: Readonly<SearchersListProps>) {
   const { data: searchers = [] } = useSearchers(limit);
 
@@ -303,6 +307,8 @@ export default function SearchersList({
         borderColor: "divider",
         width: "100%",
         flex: 1,
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       {title && (
@@ -328,6 +334,17 @@ export default function SearchersList({
             <SearcherRow key={s.id} s={s} i={i} />
           ))}
         </Stack>
+      )}
+
+      {viewAllLink && (
+        <Button
+          component={RouterLink}
+          to={viewAllLink}
+          endIcon={<ArrowForwardIcon />}
+          sx={{ mt: "auto", pt: 2, display: "flex", mx: "auto" }}
+        >
+          Смотреть всех
+        </Button>
       )}
     </Paper>
   );

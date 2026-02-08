@@ -12,6 +12,8 @@ import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import { useWindowVirtualizer } from "@tanstack/react-virtual";
 import { Link as RouterLink } from "react-router-dom";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import Button from "@mui/material/Button";
 import { Author, useAuthors } from "./useAuthors";
 import { formatDuration } from "../../utils/formatDuration";
 import markerIcon from "../../../assets/marker.png";
@@ -24,6 +26,7 @@ const VIRTUALIZE_THRESHOLD = 50;
 interface AuthorsListProps {
   limit?: number;
   title?: string;
+  viewAllLink?: string;
 }
 
 function AuthorRow({ a, i }: { a: Author; i: number }) {
@@ -198,7 +201,7 @@ function VirtualizedList({ authors }: { authors: Author[] }) {
   );
 }
 
-export default function AuthorsList({ limit, title }: AuthorsListProps) {
+export default function AuthorsList({ limit, title, viewAllLink }: AuthorsListProps) {
   const { data: authors = [] } = useAuthors(limit);
 
   if (authors.length === 0) return null;
@@ -215,6 +218,8 @@ export default function AuthorsList({ limit, title }: AuthorsListProps) {
         borderColor: "divider",
         width: "100%",
         flex: 1,
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       {title && (
@@ -240,6 +245,17 @@ export default function AuthorsList({ limit, title }: AuthorsListProps) {
             <AuthorRow key={a.id} a={a} i={i} />
           ))}
         </Stack>
+      )}
+
+      {viewAllLink && (
+        <Button
+          component={RouterLink}
+          to={viewAllLink}
+          endIcon={<ArrowForwardIcon />}
+          sx={{ mt: "auto", pt: 2, display: "flex", mx: "auto" }}
+        >
+          Смотреть всех
+        </Button>
       )}
     </Paper>
   );

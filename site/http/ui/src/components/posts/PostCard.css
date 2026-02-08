@@ -242,6 +242,18 @@
   color: #1a1a1a;
 }
 
+.post-card__author--link {
+  text-decoration: none;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.post-card__author--link:hover {
+  color: #555;
+  text-decoration: underline;
+}
+
 /* ── shine layer (holographic) ── */
 .post-card__shine {
   display: grid;

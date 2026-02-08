@@ -5,9 +5,8 @@ import { countryCodeToFlag, getCountryName } from "../../utils/countries";
 import { formatDuration } from "../../utils/formatDuration";
 import { plural } from "../../utils/plural";
 
-interface SearcherStatsProps {
+interface AuthorStatsProps {
   posts: UserPost[];
-  avgSearchTime?: number;
 }
 
 interface StatCardProps {
@@ -104,21 +103,20 @@ function StatCard({
   );
 }
 
-function formatSearchTime(seconds: number): string {
-  if (seconds < 60) return `${Math.round(seconds)}сек.`;
+function formatSolveTime(seconds: number): string {
+  if (seconds < 60) return `${Math.round(seconds)} сек.`;
   if (seconds < 3600) return `${Math.round(seconds / 60)} мин.`;
   if (seconds < 86400) return `${Math.round(seconds / 3600)} ч.`;
   return formatDuration(seconds);
 }
 
-// Haversine formula to calculate distance between two coordinates in km
 function haversineDistance(
   lat1: number,
   lon1: number,
   lat2: number,
   lon2: number,
 ): number {
-  const R = 6371; // Earth's radius in km
+  const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
   const a =
@@ -132,29 +130,26 @@ function haversineDistance(
 }
 
 function formatDistance(km: number): string {
-  if (km >= 1_000_000) {
-    return `${(km / 1_000_000).toFixed(1)} млн. км`;
-  }
-  if (km >= 10_000) {
-    return `${Math.round(km / 1000)} тыс. км`;
-  }
-  if (km >= 1000) {
+  if (km >= 1_000_000) return `${(km / 1_000_000).toFixed(1)} млн. км`;
+  if (km >= 10_000) return `${Math.round(km / 1000)} тыс. км`;
+  if (km >= 1000)
     return `${km.toLocaleString("ru-RU", { maximumFractionDigits: 0 })} км`;
-  }
   return `${Math.round(km)} км`;
 }
 
-export default function SearcherStats({
+export default function AuthorStats({
   posts,
-  avgSearchTime,
-}: Readonly<SearcherStatsProps>) {
+}: Readonly<AuthorStatsProps>) {
   const stats = useMemo(() => {
-    const finderPosts = posts.filter((p) => p.role === "finder");
-    if (finderPosts.length === 0) return null;
+    const authorPosts = posts.filter((p) => p.role === "author");
+    if (authorPosts.length === 0) return null;
+
+    const solvedPosts = authorPosts.filter((p) => p.is_found);
+    const unsolvedPosts = authorPosts.filter((p) => !p.is_found);
 
     // Country stats
     const countryCounts: Record<string, number> = {};
-    finderPosts.forEach((p) => {
+    authorPosts.forEach((p) => {
       if (p.country_code) {
         countryCounts[p.country_code] =
           (countryCounts[p.country_code] || 0) + 1;
@@ -164,84 +159,104 @@ export default function SearcherStats({
     const uniqueCountries = countryEntries.length;
     const favoriteCountry = countryEntries.sort((a, b) => b[1] - a[1])[0];
 
-    // Time stats (search duration = found_date - created_date)
-    const searchTimes: { post: UserPost; duration: number }[] = [];
-    finderPosts.forEach((p) => {
+    // Solve time stats
+    const solveTimes: { post: UserPost; duration: number }[] = [];
+    solvedPosts.forEach((p) => {
       if (p.found_date && p.created_date) {
         const found = new Date(p.found_date).getTime();
         const created = new Date(p.created_date).getTime();
-        const duration = (found - created) / 1000; // seconds
-        if (duration > 0) {
-          searchTimes.push({ post: p, duration });
-        }
+        const duration = (found - created) / 1000;
+        if (duration > 0) solveTimes.push({ post: p, duration });
       }
     });
 
-    const fastestSearch =
-      searchTimes.length > 0
-        ? searchTimes.reduce((min, curr) =>
+    const quickestCatch =
+      solveTimes.length > 0
+        ? solveTimes.reduce((min, curr) =>
             curr.duration < min.duration ? curr : min,
           )
         : null;
-    const longestSearch =
-      searchTimes.length > 0
-        ? searchTimes.reduce((max, curr) =>
+    const longestSurvivor =
+      solveTimes.length > 0
+        ? solveTimes.reduce((max, curr) =>
             curr.duration > max.duration ? curr : max,
           )
         : null;
 
-    // First find
-    const sortedByDate = [...finderPosts]
-      .filter((p) => p.found_date)
+    // Oldest unsolved mystery
+    const now = Date.now();
+    const oldestUnsolved =
+      unsolvedPosts.length > 0
+        ? unsolvedPosts.reduce((oldest, curr) => {
+            const currAge = now - new Date(curr.created_date).getTime();
+            const oldestAge = now - new Date(oldest.created_date).getTime();
+            return currAge > oldestAge ? curr : oldest;
+          })
+        : null;
+    const oldestUnsolvedAge = oldestUnsolved
+      ? (now - new Date(oldestUnsolved.created_date).getTime()) / 1000
+      : 0;
+
+    // Unique finders & biggest fan
+    const finderCounts: Record<string, number> = {};
+    solvedPosts.forEach((p) => {
+      if (p.found_by) {
+        finderCounts[p.found_by] = (finderCounts[p.found_by] || 0) + 1;
+      }
+    });
+    const uniqueFinders = Object.keys(finderCounts).length;
+    const biggestFan = Object.entries(finderCounts).sort(
+      (a, b) => b[1] - a[1],
+    )[0];
+
+    // First post date
+    const sortedByCreated = [...authorPosts]
+      .filter((p) => p.created_date)
       .sort(
         (a, b) =>
-          new Date(a.found_date!).getTime() - new Date(b.found_date!).getTime(),
+          new Date(a.created_date).getTime() -
+          new Date(b.created_date).getTime(),
       );
-    const firstFind = sortedByDate[0];
+    const firstPost = sortedByCreated[0];
 
-    // Rarest catch (highest tier)
-    const rarestTier = Math.max(...finderPosts.map((p) => p.tier));
-
-    // Total travel distance
-    const postsWithCoords = finderPosts
-      .filter(
-        (p) =>
-          p.latitude !== undefined &&
-          p.longitude !== undefined &&
-          p.latitude !== 0 &&
-          p.longitude !== 0,
-      )
-      .sort(
-        (a, b) =>
-          new Date(a.found_date || 0).getTime() -
-          new Date(b.found_date || 0).getTime(),
-      );
-
-    let totalDistance = 0;
-    for (let i = 1; i < postsWithCoords.length; i++) {
-      const prev = postsWithCoords[i - 1];
-      const curr = postsWithCoords[i];
-      totalDistance += haversineDistance(
-        prev.latitude!,
-        prev.longitude!,
-        curr.latitude!,
-        curr.longitude!,
-      );
+    // Geographic reach (max distance between any two posts)
+    const postsWithCoords = authorPosts.filter(
+      (p) =>
+        p.latitude !== undefined &&
+        p.longitude !== undefined &&
+        p.latitude !== 0 &&
+        p.longitude !== 0,
+    );
+    let maxDistance = 0;
+    for (let i = 0; i < postsWithCoords.length; i++) {
+      for (let j = i + 1; j < postsWithCoords.length; j++) {
+        const dist = haversineDistance(
+          postsWithCoords[i].latitude!,
+          postsWithCoords[i].longitude!,
+          postsWithCoords[j].latitude!,
+          postsWithCoords[j].longitude!,
+        );
+        if (dist > maxDistance) maxDistance = dist;
+      }
     }
 
     return {
       favoriteCountry,
       uniqueCountries,
-      fastestSearch,
-      longestSearch,
-      firstFind,
-      rarestTier,
-      totalFinds: finderPosts.length,
-      totalDistance,
+      quickestCatch,
+      longestSurvivor,
+      oldestUnsolved,
+      oldestUnsolvedAge,
+      biggestFan,
+      uniqueFinders,
+      firstPost,
+      maxDistance,
+      totalPosts: authorPosts.length,
+      solvedCount: solvedPosts.length,
     };
   }, [posts]);
 
-  if (!stats || stats.totalFinds === 0) return null;
+  if (!stats || stats.totalPosts === 0) return null;
 
   const statCards: StatCardProps[] = [];
 
@@ -251,101 +266,105 @@ export default function SearcherStats({
     statCards.push({
       icon: countryCodeToFlag(code),
       value: getCountryName(code),
-      label: "Любимый регион",
-      sublabel: plural(count, "находка"),
+      label: "Любимая локация",
+      sublabel: plural(count, "пост"),
       gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
     });
   }
 
-  // Countries count
+  // Countries covered
   if (stats.uniqueCountries > 1) {
     statCards.push({
       icon: "🌍",
       value: String(stats.uniqueCountries),
       label: "Стран",
-      sublabel: "исследовано",
+      sublabel: "на карте",
       gradient: "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)",
     });
   }
 
-  // Travel distance
-  if (stats.totalDistance > 100) {
+  // Geographic reach
+  if (stats.maxDistance > 100) {
     statCards.push({
-      icon: "✈️",
-      value: formatDistance(stats.totalDistance),
-      label: "Путь сыщика",
-      sublabel: "между находками",
+      icon: "📏",
+      value: formatDistance(stats.maxDistance),
+      label: "Размах географии",
+      sublabel: "между постами",
       gradient: "linear-gradient(135deg, #5ee7df 0%, #b490ca 100%)",
     });
   }
 
-  // Average search time
-  if (avgSearchTime && avgSearchTime > 0) {
-    statCards.push({
-      icon: "⏱️",
-      value: formatDuration(avgSearchTime),
-      label: "Среднее время",
-      sublabel: "на поиск",
-      gradient: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-    });
-  }
-
-  // Fastest search
-  if (stats.fastestSearch) {
+  // Quickest catch
+  if (stats.quickestCatch) {
     statCards.push({
       icon: "⚡",
-      value: formatSearchTime(stats.fastestSearch.duration),
-      label: "Рекорд скорости",
-      sublabel: "самый быстрый поиск",
+      value: formatSolveTime(stats.quickestCatch.duration),
+      label: "Быстрее всех нашли",
+      sublabel: "рекорд скорости",
       gradient: "linear-gradient(135deg, #f093fb 0%, #f5576c 100%)",
     });
   }
 
-  // Longest search
-  if (stats.longestSearch && stats.longestSearch !== stats.fastestSearch) {
+  // Longest survivor
+  if (
+    stats.longestSurvivor &&
+    stats.longestSurvivor !== stats.quickestCatch
+  ) {
     statCards.push({
       icon: "🏔️",
-      value: formatSearchTime(stats.longestSearch.duration),
-      label: "Эпичная охота",
-      sublabel: "самый долгий поиск",
+      value: formatSolveTime(stats.longestSurvivor.duration),
+      label: "Дольше всех искали",
+      sublabel: "самый сложный пост",
       gradient: "linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)",
     });
   }
 
-  // First find
-  if (stats.firstFind?.found_date) {
-    const date = new Date(stats.firstFind.found_date);
+  // Oldest unsolved mystery (only if older than 30 days)
+  if (stats.oldestUnsolved && stats.oldestUnsolvedAge > 86400 * 30) {
+    statCards.push({
+      icon: "🔮",
+      value: formatDuration(stats.oldestUnsolvedAge),
+      label: "Старейшая загадка",
+      sublabel: "ещё не разгадана",
+      gradient: "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)",
+    });
+  }
+
+  // Biggest fan (only if found more than 1 post)
+  if (stats.biggestFan && stats.biggestFan[1] > 1) {
+    statCards.push({
+      icon: "👑",
+      value: stats.biggestFan[0],
+      label: "Фанат №1",
+      sublabel: `нашёл ${plural(stats.biggestFan[1], "пост")}`,
+      gradient: "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)",
+    });
+  }
+
+  // Unique finders
+  if (stats.uniqueFinders > 1) {
+    statCards.push({
+      icon: "🎯",
+      value: String(stats.uniqueFinders),
+      label: "Сыщиков",
+      sublabel: "разгадали посты",
+      gradient: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
+    });
+  }
+
+  // First post
+  if (stats.firstPost?.created_date) {
+    const date = new Date(stats.firstPost.created_date);
     const monthYear = date.toLocaleDateString("ru-RU", {
       month: "short",
       year: "numeric",
     });
     statCards.push({
-      icon: "🎯",
+      icon: "📅",
       value: monthYear,
-      label: "Первая находка",
+      label: "Первый пост",
       sublabel: "начало пути",
-      gradient: "linear-gradient(135deg, #fa709a 0%, #fee140 100%)",
-    });
-  }
-
-  // Rarest tier
-  if (stats.rarestTier >= 3) {
-    const tierLabels = [
-      "Свежий",
-      "Выдержанный",
-      "Винтажный",
-      "Редкий",
-      "Легендарный",
-    ];
-    statCards.push({
-      icon: stats.rarestTier === 4 ? "💎" : "✨",
-      value: tierLabels[stats.rarestTier],
-      label: "Редкий улов",
-      sublabel: stats.rarestTier === 4 ? "5+ лет" : "2-5 лет",
-      gradient:
-        stats.rarestTier === 4
-          ? "linear-gradient(135deg, #a855f7 0%, #ec4899 100%)"
-          : "linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)",
+      gradient: "linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)",
     });
   }
 
@@ -364,7 +383,7 @@ export default function SearcherStats({
           fontSize: "0.7rem",
         }}
       >
-        Статистика
+        Интересные факты
       </Typography>
       <Box
         sx={{

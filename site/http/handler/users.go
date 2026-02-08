@@ -38,11 +38,13 @@ type userPostResponse struct {
 	Id           int     `json:"id"`
 	Title        string  `json:"title"`
 	MainImageURL string  `json:"main_image_url"`
+	UserID       int     `json:"user_id,omitempty"`
 	Username     string  `json:"username"`
 	Gender       string  `json:"gender"`
 	CreatedDate  string  `json:"created_date"`
 	IsFound      bool    `json:"is_found"`
 	FoundDate    string  `json:"found_date,omitempty"`
+	FoundByID    int     `json:"found_by_id,omitempty"`
 	FoundBy      string  `json:"found_by,omitempty"`
 	Longitude    float64 `json:"longitude,omitempty"`
 	Latitude     float64 `json:"latitude,omitempty"`
@@ -462,11 +464,13 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 			"_id":            1,
 			"title":          1,
 			"main_image_url": 1,
+			"user_id":        1,
 			"username":       "$author.login",
 			"gender":         "$author.gender",
 			"created":        1,
 			"is_found":       "$ftp.is_found",
 			"found_date":     "$ftp.found_date",
+			"found_by_id":    "$ftp.found_by_id",
 			"found_by":       "$finder.login",
 			"longitude":      "$ftp.longitude",
 			"latitude":       "$ftp.latitude",
@@ -520,10 +524,12 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 			"_id":            1,
 			"title":          "$post.title",
 			"main_image_url": "$post.main_image_url",
+			"user_id":        "$post.user_id",
 			"username":       "$author.login",
 			"gender":         "$author.gender",
 			"created":        "$post.created",
 			"is_found":       1,
+			"found_by_id":    1,
 			"found_date":     1,
 			"longitude":      1,
 			"latitude":       1,
@@ -558,6 +564,7 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 			Id:           postId,
 			Title:        strFromBson(p["title"]),
 			MainImageURL: strFromBson(p["main_image_url"]),
+			UserID:       intFromBson(p["user_id"]),
 			Username:     strFromBson(p["username"]),
 			Gender:       strFromBson(p["gender"]),
 			Role:         "author",
@@ -579,6 +586,7 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 		}
 		post.Longitude = floatFromBson(p["longitude"])
 		post.Latitude = floatFromBson(p["latitude"])
+		post.FoundByID = intFromBson(p["found_by_id"])
 		post.FoundBy = strFromBson(p["found_by"])
 		if post.IsFound {
 			post.CountryCode = countryCodeFromTags(p["tags"])
@@ -595,8 +603,10 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 			Id:           postId,
 			Title:        strFromBson(p["title"]),
 			MainImageURL: strFromBson(p["main_image_url"]),
+			UserID:       intFromBson(p["user_id"]),
 			Username:     strFromBson(p["username"]),
 			Gender:       strFromBson(p["gender"]),
+			FoundByID:    intFromBson(p["found_by_id"]),
 			Role:         "finder",
 		}
 		if v, ok := p["is_found"].(bool); ok {

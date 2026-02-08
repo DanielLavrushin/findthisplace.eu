@@ -118,6 +118,8 @@ func periodToCutoff(period string) time.Time {
 
 func intFromBson(v interface{}) int {
 	switch n := v.(type) {
+	case int:
+		return n
 	case int32:
 		return int(n)
 	case int64:
@@ -147,6 +149,8 @@ func floatFromBson(v interface{}) float64 {
 	switch n := v.(type) {
 	case float64:
 		return n
+	case int:
+		return float64(n)
 	case int32:
 		return float64(n)
 	case int64:
