@@ -22,6 +22,7 @@ import tire1marker from "../../assets/tire1marker.png";
 import tire2marker from "../../assets/tire2marker.png";
 import tire3marker from "../../assets/tire3marker.png";
 import tire4marker from "../../assets/tire4marker.png";
+import { plural } from "../utils/plural";
 
 const tierIcons = [
   tire0marker,
@@ -157,7 +158,7 @@ export default function SearcherDetailPage() {
               {user.found_tiers_total}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              находок
+              {plural(user.found_tiers_total, "находка", true)}
             </Typography>
           </Box>
 
@@ -194,7 +195,6 @@ export default function SearcherDetailPage() {
               </Tooltip>
             );
           })}
-
         </Box>
       </Paper>
 

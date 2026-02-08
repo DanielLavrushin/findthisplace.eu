@@ -24,6 +24,7 @@ import tire1marker from "../../assets/tire1marker.png";
 import tire2marker from "../../assets/tire2marker.png";
 import tire3marker from "../../assets/tire3marker.png";
 import tire4marker from "../../assets/tire4marker.png";
+import { plural } from "../utils/plural";
 
 const tierLeafletIcons = [
   tire0marker,
@@ -147,7 +148,7 @@ export default function AuthorDetailPage() {
               {user.author_posts_total}
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              постов
+              {plural(user.author_posts_total, "пост", true)}
             </Typography>
           </Box>
 
@@ -255,10 +256,7 @@ export default function AuthorDetailPage() {
                           {post.title || `Пост #${post.id}`}
                         </Typography>
                         {post.is_found && post.found_date && (
-                          <Typography
-                            variant="caption"
-                            color="text.secondary"
-                          >
+                          <Typography variant="caption" color="text.secondary">
                             Разгадан{" "}
                             {new Date(post.found_date).toLocaleDateString(
                               "ru-RU",
