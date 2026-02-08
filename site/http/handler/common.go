@@ -33,5 +33,6 @@ func (api *API) RegisterEndpoints(mux *http.ServeMux, cfg *config.Config) {
 	api.RegisterUsersApi()
 	api.RegisterTagsApi()
 	api.RegisterPostsApi()
+	api.RegisterWebhookApi()
 
 }
