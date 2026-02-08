@@ -85,7 +85,9 @@ jobs:
         run: |
           PAYLOAD='{"action":"released","version":"${{ inputs.version }}"}'
           SIGNATURE="sha256=$(echo -n "$PAYLOAD" | openssl dgst -sha256 -hmac "$WEBHOOK_SECRET" | awk '{print $2}')"
-          curl -sf -X POST https://findthisplace.eu/api/webhook/update \
+          HTTP_CODE=$(curl -s -o /tmp/response.txt -w "%{http_code}" -X POST https://findthisplace.eu/api/webhook/update \
             -H "Content-Type: application/json" \
             -H "X-Hub-Signature-256: $SIGNATURE" \
-            -d "$PAYLOAD"
+            -d "$PAYLOAD")
+          echo "HTTP $HTTP_CODE: $(cat /tmp/response.txt)"
+          [ "$HTTP_CODE" = "200" ] || exit 1
