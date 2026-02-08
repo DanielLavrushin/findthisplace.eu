@@ -11,6 +11,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 func (api *API) RegisterWebhookApi() {
@@ -41,7 +42,8 @@ func (api *API) handleWebhookUpdate(w http.ResponseWriter, r *http.Request) {
 		script = "/var/www/findthisplace.eu/update.sh"
 	}
 
-	cmd := exec.Command("systemd-run", "--unit=findthisplace-update", "--description=findthisplace update", "/bin/bash", script)
+	unitName := fmt.Sprintf("findthisplace-update-%d", time.Now().Unix())
+	cmd := exec.Command("systemd-run", "--no-block", "--unit="+unitName, "/bin/bash", script)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
