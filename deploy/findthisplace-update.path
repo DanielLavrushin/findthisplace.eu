@@ -1,0 +1,8 @@
+[Unit]
+Description=Watch for findthisplace update trigger
+
+[Path]
+PathExists=/tmp/findthisplace-update-trigger
+
+[Install]
+WantedBy=multi-user.target

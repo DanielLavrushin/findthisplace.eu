@@ -1,0 +1,6 @@
+[Unit]
+Description=Update findthisplace binary
+
+[Service]
+Type=oneshot
+ExecStart=/var/www/findthisplace.eu/update.sh

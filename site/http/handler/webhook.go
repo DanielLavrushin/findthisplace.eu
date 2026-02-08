@@ -9,10 +9,10 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
-	"time"
 )
+
+const updateTriggerFile = "/tmp/findthisplace-update-trigger"
 
 func (api *API) RegisterWebhookApi() {
 	api.mux.HandleFunc("POST /api/webhook/update", api.handleWebhookUpdate)
@@ -37,18 +37,9 @@ func (api *API) handleWebhookUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	script := os.Getenv("UPDATE_SCRIPT")
-	if script == "" {
-		script = "/var/www/findthisplace.eu/update.sh"
-	}
-
-	unitName := fmt.Sprintf("findthisplace-update-%d", time.Now().Unix())
-	cmd := exec.Command("systemd-run", "--no-block", "--unit="+unitName, "/bin/bash", script)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		log.Printf("webhook: failed to start update script: %v", err)
-		http.Error(w, "failed to start update", http.StatusInternalServerError)
+	if err := os.WriteFile(updateTriggerFile, body, 0644); err != nil {
+		log.Printf("webhook: failed to write trigger file: %v", err)
+		http.Error(w, "failed to trigger update", http.StatusInternalServerError)
 		return
 	}
 
