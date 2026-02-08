@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-const updateTriggerFile = "/run/findthisplace-update-trigger"
+const updateTriggerFile = "/run/findthisplace-update/trigger"
 
 func (api *API) RegisterWebhookApi() {
 	api.mux.HandleFunc("POST /api/webhook/update", api.handleWebhookUpdate)

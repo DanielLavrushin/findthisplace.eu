@@ -8,7 +8,7 @@ LOG_TAG="findthisplace-update"
 
 log() { logger -t "$LOG_TAG" "$1"; echo "$1"; }
 
-rm -f /run/findthisplace-update-trigger
+rm -f /run/findthisplace-update/trigger
 
 log "downloading new binary..."
 wget -q -O "${BINARY_PATH}.new" "$DOWNLOAD_URL"
