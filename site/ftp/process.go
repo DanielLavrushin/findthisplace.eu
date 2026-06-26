@@ -66,13 +66,17 @@ func processPosts(ctx context.Context, store *db.DB, postIDs []int) error {
 		}
 
 		if fp.IsFound {
-			if tc, ok := topCommentByPost[dp.Id]; ok {
-				fp.FoundById = tc.UserId
-				fp.FoundDate = tc.CreatedAt
-			}
 			if c, ok := coordsByPost[dp.Id]; ok {
+				// Credit the find to whoever posted the comment that located the
+				// place, not the highest-rated comment (which is often unrelated).
 				fp.Latitude = c.Lat
 				fp.Longitude = c.Lng
+				fp.FoundById = c.UserId
+				fp.FoundDate = c.Created
+			} else if tc, ok := topCommentByPost[dp.Id]; ok {
+				// No located comment; fall back to the top-rated comment's author.
+				fp.FoundById = tc.UserId
+				fp.FoundDate = tc.CreatedAt
 			}
 		}
 
@@ -183,7 +187,16 @@ func loadCommentIDs(ctx context.Context, store *db.DB, postIDs []int) ([]int, er
 	return ids, cur.Err()
 }
 
-func loadCommentCoords(ctx context.Context, store *db.DB, postIDs []int) (map[int]coords, error) {
+// commentLocation is the coordinates a post inherits from a comment, plus the
+// author and date of that comment so the post can be credited to whoever
+// actually located the place.
+type commentLocation struct {
+	Lat, Lng float64
+	UserId   int
+	Created  dirty.EpochTime
+}
+
+func loadCommentCoords(ctx context.Context, store *db.DB, postIDs []int) (map[int]commentLocation, error) {
 	pipeline := mongo.Pipeline{
 		{{Key: "$match", Value: bson.M{"post_id": bson.M{"$in": postIDs}}}},
 		{{Key: "$lookup", Value: bson.D{
@@ -199,6 +212,8 @@ func loadCommentCoords(ctx context.Context, store *db.DB, postIDs []int) (map[in
 			{Key: "_id", Value: "$post_id"},
 			{Key: "lat", Value: bson.M{"$first": "$ftp.latitude"}},
 			{Key: "lng", Value: bson.M{"$first": "$ftp.longitude"}},
+			{Key: "user_id", Value: bson.M{"$first": "$user_id"}},
+			{Key: "created", Value: bson.M{"$first": "$created"}},
 		}}},
 	}
 
@@ -208,17 +223,19 @@ func loadCommentCoords(ctx context.Context, store *db.DB, postIDs []int) (map[in
 	}
 	defer cur.Close(ctx)
 
-	result := make(map[int]coords)
+	result := make(map[int]commentLocation)
 	for cur.Next(ctx) {
 		var row struct {
-			PostId int     `bson:"_id"`
-			Lat    float64 `bson:"lat"`
-			Lng    float64 `bson:"lng"`
+			PostId  int             `bson:"_id"`
+			Lat     float64         `bson:"lat"`
+			Lng     float64         `bson:"lng"`
+			UserId  int             `bson:"user_id"`
+			Created dirty.EpochTime `bson:"created"`
 		}
 		if err := cur.Decode(&row); err != nil {
 			return nil, err
 		}
-		result[row.PostId] = coords{Lat: row.Lat, Lng: row.Lng}
+		result[row.PostId] = commentLocation{Lat: row.Lat, Lng: row.Lng, UserId: row.UserId, Created: row.Created}
 	}
 	return result, cur.Err()
 }

@@ -12,8 +12,13 @@ import {
   ListItemButton,
   ListItemText,
   Divider,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
+import PersonIcon from "@mui/icons-material/Person";
+import SearchIcon from "@mui/icons-material/Search";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import logo from "../../assets/ftp-logo.png";
 import { useAuth } from "../contexts/AuthContext";
@@ -28,6 +33,7 @@ const navItems = [
 
 export default function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, isAdmin, logout } = useAuth();
@@ -76,6 +82,24 @@ export default function Header() {
           <>
             <ListItem>
               <ListItemText primary={user.username} secondary="Вы вошли" />
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton
+                component={Link}
+                to={`/authors/${user.uid}`}
+                onClick={handleDrawerToggle}
+              >
+                <ListItemText primary="Профиль автора" />
+              </ListItemButton>
+            </ListItem>
+            <ListItem disablePadding>
+              <ListItemButton
+                component={Link}
+                to={`/searchers/${user.uid}`}
+                onClick={handleDrawerToggle}
+              >
+                <ListItemText primary="Профиль сыщика" />
+              </ListItemButton>
             </ListItem>
             <ListItem disablePadding>
               <ListItemButton onClick={handleLogout}>
@@ -179,9 +203,38 @@ export default function Header() {
           >
             {user ? (
               <>
-                <Typography variant="body2" color="text.secondary">
+                <Button
+                  color="inherit"
+                  onClick={(e) => setUserMenuAnchor(e.currentTarget)}
+                  endIcon={<KeyboardArrowDownIcon />}
+                  sx={{ textTransform: "none" }}
+                >
                   {user.username}
-                </Typography>
+                </Button>
+                <Menu
+                  anchorEl={userMenuAnchor}
+                  open={Boolean(userMenuAnchor)}
+                  onClose={() => setUserMenuAnchor(null)}
+                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+                  transformOrigin={{ vertical: "top", horizontal: "right" }}
+                >
+                  <MenuItem
+                    component={Link}
+                    to={`/authors/${user.uid}`}
+                    onClick={() => setUserMenuAnchor(null)}
+                  >
+                    <PersonIcon sx={{ fontSize: 18, mr: 1 }} />
+                    Профиль автора
+                  </MenuItem>
+                  <MenuItem
+                    component={Link}
+                    to={`/searchers/${user.uid}`}
+                    onClick={() => setUserMenuAnchor(null)}
+                  >
+                    <SearchIcon sx={{ fontSize: 18, mr: 1 }} />
+                    Профиль сыщика
+                  </MenuItem>
+                </Menu>
                 <Button color="inherit" onClick={handleLogout}>
                   Выйти
                 </Button>
