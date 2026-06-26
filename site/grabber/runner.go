@@ -13,10 +13,6 @@ import (
 const checkInterval = 5 * time.Minute
 const runThreshold = 2 * time.Hour
 
-// fullRunThreshold controls how often we re-scan the entire post archive
-// (ApiPostsFullEndpoint) rather than just the latest feed. Old posts that get
-// marked [НАЙДЕНО] or gain a geo comment after they drop off the latest feed are
-// only picked up by these full backfill runs.
 const fullRunThreshold = 24 * time.Hour
 
 func StartBackground(ctx context.Context, store *db.DB, sm *settings.Manager) {
@@ -41,29 +37,17 @@ func StartBackground(ctx context.Context, store *db.DB, sm *settings.Manager) {
 }
 
 func runIfNeeded(ctx context.Context, store *db.DB, sm *settings.Manager) {
-	lastTime, err := sm.GetLastGrabberTime(ctx)
-	if err != nil {
-		log.Printf("[grabber] could not read last_grabber_time: %v, will run", err)
-	} else if time.Since(lastTime) < runThreshold {
-		log.Printf("[grabber] last run was %s ago, skipping", time.Since(lastTime).Round(time.Second))
-		return
-	}
+	fullRun := fullBackfillDue(ctx, sm)
 
-	// Periodically re-scan the whole archive so old posts that only later get
-	// marked [НАЙДЕНО] or gain a geo comment are picked up; otherwise we only
-	// ever process the latest feed. On failure last_full stays unset, so the
-	// backfill is retried on the next eligible run rather than every 24h.
-	fullRun := false
-	if lastFull, err := sm.GetLastFullGrabberTime(ctx); err != nil {
-		log.Printf("[grabber] could not read last_full_grabber_time: %v, will run full backfill", err)
-		fullRun = true
-	} else if time.Since(lastFull) >= fullRunThreshold {
-		log.Printf("[grabber] last full backfill was %s ago, running full backfill", time.Since(lastFull).Round(time.Second))
-		fullRun = true
+	if !fullRun && incrementalThrottled(ctx, sm) {
+		return
 	}
 
 	if fullRun {
 		log.Println("[grabber] starting full backfill run")
+		if err := sm.SetLastFullGrabberTime(ctx, time.Now()); err != nil {
+			log.Printf("[grabber] failed to set last_full_grabber_time: %v", err)
+		}
 	} else {
 		log.Println("[grabber] starting incremental run")
 	}
@@ -89,11 +73,32 @@ func runIfNeeded(ctx context.Context, store *db.DB, sm *settings.Manager) {
 
 	log.Println("[grabber] run completed successfully")
 	setStatus(ctx, sm, "success")
-	if fullRun {
-		if err := sm.SetLastFullGrabberTime(ctx, time.Now()); err != nil {
-			log.Printf("[grabber] failed to set last_full_grabber_time: %v", err)
-		}
+}
+
+func fullBackfillDue(ctx context.Context, sm *settings.Manager) bool {
+	lastFull, err := sm.GetLastFullGrabberTime(ctx)
+	if err != nil {
+		log.Printf("[grabber] last_full_grabber_time unavailable (%v), full backfill due", err)
+		return true
 	}
+	if d := time.Since(lastFull); d >= fullRunThreshold {
+		log.Printf("[grabber] last full backfill was %s ago, due", d.Round(time.Second))
+		return true
+	}
+	return false
+}
+
+func incrementalThrottled(ctx context.Context, sm *settings.Manager) bool {
+	lastTime, err := sm.GetLastGrabberTime(ctx)
+	if err != nil {
+		log.Printf("[grabber] could not read last_grabber_time: %v, will run", err)
+		return false
+	}
+	if d := time.Since(lastTime); d < runThreshold {
+		log.Printf("[grabber] last run was %s ago, skipping", d.Round(time.Second))
+		return true
+	}
+	return false
 }
 
 func setStatus(ctx context.Context, sm *settings.Manager, status string) {
