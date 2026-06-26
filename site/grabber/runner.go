@@ -13,6 +13,12 @@ import (
 const checkInterval = 5 * time.Minute
 const runThreshold = 2 * time.Hour
 
+// fullRunThreshold controls how often we re-scan the entire post archive
+// (ApiPostsFullEndpoint) rather than just the latest feed. Old posts that get
+// marked [НАЙДЕНО] or gain a geo comment after they drop off the latest feed are
+// only picked up by these full backfill runs.
+const fullRunThreshold = 24 * time.Hour
+
 func StartBackground(ctx context.Context, store *db.DB, sm *settings.Manager) {
 	go func() {
 		log.Println("[grabber] background scheduler started")
@@ -43,8 +49,24 @@ func runIfNeeded(ctx context.Context, store *db.DB, sm *settings.Manager) {
 		return
 	}
 
-	log.Println("[grabber] starting run")
+	// Periodically re-scan the whole archive so old posts that only later get
+	// marked [НАЙДЕНО] or gain a geo comment are picked up; otherwise we only
+	// ever process the latest feed. On failure last_full stays unset, so the
+	// backfill is retried on the next eligible run rather than every 24h.
 	fullRun := false
+	if lastFull, err := sm.GetLastFullGrabberTime(ctx); err != nil {
+		log.Printf("[grabber] could not read last_full_grabber_time: %v, will run full backfill", err)
+		fullRun = true
+	} else if time.Since(lastFull) >= fullRunThreshold {
+		log.Printf("[grabber] last full backfill was %s ago, running full backfill", time.Since(lastFull).Round(time.Second))
+		fullRun = true
+	}
+
+	if fullRun {
+		log.Println("[grabber] starting full backfill run")
+	} else {
+		log.Println("[grabber] starting incremental run")
+	}
 
 	result, err := Run(ctx, &fullRun, store)
 	if err != nil {
@@ -67,6 +89,11 @@ func runIfNeeded(ctx context.Context, store *db.DB, sm *settings.Manager) {
 
 	log.Println("[grabber] run completed successfully")
 	setStatus(ctx, sm, "success")
+	if fullRun {
+		if err := sm.SetLastFullGrabberTime(ctx, time.Now()); err != nil {
+			log.Printf("[grabber] failed to set last_full_grabber_time: %v", err)
+		}
+	}
 }
 
 func setStatus(ctx context.Context, sm *settings.Manager, status string) {

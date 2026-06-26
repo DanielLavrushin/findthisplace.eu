@@ -50,6 +50,13 @@ var reAbsoluteURL = regexp.MustCompile(`^https?://`)
 
 const shortURLUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 
+// consentBypassCookie tells Google we have already answered the EU "before you
+// continue" consent prompt. Without it, Google redirects map URLs through
+// consent.google.com, where our shared cookie jar gets the interstitial HTML
+// (HTTP 200, no Location) instead of the bypass redirect, dead-ending
+// resolution. SOCS encodes an accepted choice and skips the wall entirely.
+const consentBypassCookie = "SOCS=CAISNQgDEitib3FfaWRlbnRpdHlmcm9udGVuZHVpc2VydmVyXzIwMjQwAEgB; CONSENT=YES+"
+
 func resolveShortURL(text string) *coords {
 	shortURL := reShortGoogleURL.FindString(text)
 	if shortURL == "" {
@@ -71,6 +78,7 @@ func resolveShortURL(text string) *coords {
 		req.Header.Set("User-Agent", shortURLUserAgent)
 		req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
 		req.Header.Set("Accept-Language", "ru-RU,ru;q=0.9,en;q=0.8")
+		req.Header.Set("Cookie", consentBypassCookie)
 
 		resp, err := shortURLClient.Do(req)
 		if err != nil {
@@ -93,6 +101,14 @@ func resolveShortURL(text string) *coords {
 			}
 		}
 
+		// If Google still routes us through its consent wall, follow the real
+		// target carried in the "continue" parameter instead of the interstitial.
+		if u, err := url.Parse(location); err == nil && strings.Contains(u.Host, "consent.google.") {
+			if cont := u.Query().Get("continue"); cont != "" {
+				location = cont
+			}
+		}
+
 		log.Printf("geo: %s -> HTTP %d -> %s", current, resp.StatusCode, location)
 
 		for _, fn := range extractors {
@@ -105,21 +121,6 @@ func resolveShortURL(text string) *coords {
 		if c := extractFromQuery(location); c != nil {
 			log.Printf("geo: short URL %s resolved to %.6f, %.6f (via query params)", shortURL, c.Lat, c.Lng)
 			return c
-		}
-
-		if parsed, err := url.Parse(location); err == nil {
-			if continueURL := parsed.Query().Get("continue"); continueURL != "" {
-				for _, fn := range extractors {
-					if c := fn(continueURL); c != nil {
-						log.Printf("geo: short URL %s resolved to %.6f, %.6f (via consent)", shortURL, c.Lat, c.Lng)
-						return c
-					}
-				}
-				if c := extractFromQuery(continueURL); c != nil {
-					log.Printf("geo: short URL %s resolved to %.6f, %.6f (via consent query params)", shortURL, c.Lat, c.Lng)
-					return c
-				}
-			}
 		}
 
 		current = location

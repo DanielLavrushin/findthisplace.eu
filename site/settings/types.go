@@ -3,8 +3,9 @@ package settings
 import "go.mongodb.org/mongo-driver/mongo"
 
 const (
-	LastGrabberTime   = "last_grabber_time"
-	LastGrabberStatus = "last_grabber_status"
+	LastGrabberTime     = "last_grabber_time"
+	LastFullGrabberTime = "last_full_grabber_time"
+	LastGrabberStatus   = "last_grabber_status"
 
 	HiddenNotFoundPosts = "hidden_not_found_posts"
 	HiddenTags          = "hidden_tags"
