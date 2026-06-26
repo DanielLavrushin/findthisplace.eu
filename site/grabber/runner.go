@@ -37,17 +37,13 @@ func StartBackground(ctx context.Context, store *db.DB, sm *settings.Manager) {
 }
 
 func runIfNeeded(ctx context.Context, store *db.DB, sm *settings.Manager) {
-	fullRun := fullBackfillDue(ctx, sm)
-
-	if !fullRun && incrementalThrottled(ctx, sm) {
+	if runThrottled(ctx, sm) {
 		return
 	}
 
+	fullRun := fullBackfillDue(ctx, sm)
 	if fullRun {
 		log.Println("[grabber] starting full backfill run")
-		if err := sm.SetLastFullGrabberTime(ctx, time.Now()); err != nil {
-			log.Printf("[grabber] failed to set last_full_grabber_time: %v", err)
-		}
 	} else {
 		log.Println("[grabber] starting incremental run")
 	}
@@ -73,6 +69,12 @@ func runIfNeeded(ctx context.Context, store *db.DB, sm *settings.Manager) {
 
 	log.Println("[grabber] run completed successfully")
 	setStatus(ctx, sm, "success")
+
+	if fullRun {
+		if err := sm.SetLastFullGrabberTime(ctx, time.Now()); err != nil {
+			log.Printf("[grabber] failed to set last_full_grabber_time: %v", err)
+		}
+	}
 }
 
 func fullBackfillDue(ctx context.Context, sm *settings.Manager) bool {
@@ -88,7 +90,7 @@ func fullBackfillDue(ctx context.Context, sm *settings.Manager) bool {
 	return false
 }
 
-func incrementalThrottled(ctx context.Context, sm *settings.Manager) bool {
+func runThrottled(ctx context.Context, sm *settings.Manager) bool {
 	lastTime, err := sm.GetLastGrabberTime(ctx)
 	if err != nil {
 		log.Printf("[grabber] could not read last_grabber_time: %v, will run", err)
