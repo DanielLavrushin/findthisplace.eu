@@ -184,6 +184,77 @@
   -webkit-mask-size: cover;
 }
 
+/* ── photo holo: light passing through the photo (luminance bump map) ──
+   The holographic gradient is modulated by the photo's own brightness via a
+   multiply pass (::before), then color-dodged onto the card so the result
+   reads as light emerging *through* the image rather than paint on top.
+   Gated on hover via --card-opacity so the card grid stays calm at rest. */
+.post-card__photo-holo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%) translateZ(2.2px);
+  pointer-events: none;
+  z-index: 4;
+  border-radius: 8px;
+  overflow: hidden;
+  /* isolate so the ::before multiply blends only with this layer's gradient,
+     not with the photo/card behind it */
+  isolation: isolate;
+  mask-size: cover;
+  -webkit-mask-size: cover;
+  background-image:
+    repeating-linear-gradient(
+      100deg,
+      hsl(2, 100%, 73%) 0%,
+      hsl(53, 100%, 69%) 8%,
+      hsl(93, 100%, 69%) 16%,
+      hsl(176, 100%, 76%) 24%,
+      hsl(228, 100%, 74%) 32%,
+      hsl(283, 100%, 73%) 40%,
+      hsl(2, 100%, 73%) 48%
+    ),
+    radial-gradient(
+      farthest-corner circle at var(--pointer-x) var(--pointer-y),
+      hsla(0, 0%, 100%, 0.9) 0%,
+      hsla(0, 0%, 100%, 0.2) 35%,
+      transparent 70%
+    );
+  background-size:
+    300% 300%,
+    cover;
+  background-position:
+    calc(var(--pointer-from-left) * 100%) calc(var(--pointer-from-top) * 100%),
+    center center;
+  filter: brightness(0.85) contrast(1.35) saturate(0.35);
+  mix-blend-mode: color-dodge;
+  opacity: calc(var(--card-opacity) * .75);
+}
+
+.post-card__photo-holo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--photo-url);
+  background-size: cover;
+  background-position: center;
+  /* the photo darkens the gradient: bright photo areas keep the shine,
+     dark areas crush it to black (→ no light after color-dodge) */
+  mix-blend-mode: multiply;
+}
+
+/* "dark passes light": invert the modulator so the shine emerges from the
+   dark regions instead — x-ray / developing-photo feel */
+.post-card[data-holo="dark"] .post-card__photo-holo::before {
+  filter: invert(1);
+}
+
+.post-card:not(.interacting) .post-card__photo-holo {
+  transition: opacity 0.5s ease;
+}
+
 .post-card__footer {
   display: flex;
   justify-content: space-between;

@@ -18,6 +18,11 @@ const tierMarkers = [
   tire4marker,
 ];
 
+// "bright" = light passes through bright areas of the photo (sun-glint look)
+// "dark"   = light passes through dark areas of the photo (x-ray / developing look)
+// Flip this to compare the two inversions on the real cards.
+const PHOTO_HOLO_MODE: "bright" | "dark" = "bright";
+
 function clamp(val: number, min = 0, max = 100) {
   return Math.min(Math.max(val, min), max);
 }
@@ -103,26 +108,30 @@ export default function PostCard({
   }, []);
 
   const interactEnd = useCallback(() => {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     setInteracting(false);
-    const card = cardRef.current;
-    if (!card) return;
-    const s = card.style;
-    s.setProperty("--pointer-x", "50%");
-    s.setProperty("--pointer-y", "50%");
-    s.setProperty("--pointer-from-center", "0");
-    s.setProperty("--pointer-from-top", "0.5");
-    s.setProperty("--pointer-from-left", "0.5");
-    s.setProperty("--card-opacity", "0");
-    s.setProperty("--rotate-x", "0deg");
-    s.setProperty("--rotate-y", "0deg");
-    s.setProperty("--background-x", "50%");
-    s.setProperty("--background-y", "50%");
-    s.setProperty("--card-scale", "1");
-    s.setProperty("--translate-y", "0px");
+    // Defer the reset by one frame so React removes `.interacting` first; the
+    // `:not(.interacting)` transitions then animate the card smoothly back to
+    // rest instead of snapping (resetting while the class is still on the
+    // element gives the browser no active transition to interpolate).
+    rafRef.current = requestAnimationFrame(() => {
+      const card = cardRef.current;
+      if (!card) return;
+      const s = card.style;
+      s.setProperty("--pointer-x", "50%");
+      s.setProperty("--pointer-y", "50%");
+      s.setProperty("--pointer-from-center", "0");
+      s.setProperty("--pointer-from-top", "0.5");
+      s.setProperty("--pointer-from-left", "0.5");
+      s.setProperty("--card-opacity", "0");
+      s.setProperty("--rotate-x", "0deg");
+      s.setProperty("--rotate-y", "0deg");
+      s.setProperty("--background-x", "50%");
+      s.setProperty("--background-y", "50%");
+      s.setProperty("--card-scale", "1");
+      s.setProperty("--translate-y", "0px");
+      rafRef.current = null;
+    });
   }, []);
 
   const handleCardClick = useCallback(() => {
@@ -153,6 +162,7 @@ export default function PostCard({
       ref={cardRef}
       className={`post-card${interacting ? " interacting" : ""}`}
       data-tier={post.tier}
+      data-holo={PHOTO_HOLO_MODE}
       style={
         { "--glitter": `url(${glitterImg})` } as React.CSSProperties
       }
@@ -194,6 +204,19 @@ export default function PostCard({
                       maskImage: tornMask(post.id),
                       WebkitMaskImage: tornMask(post.id),
                     }}
+                  />
+                )}
+                {post.main_image_url && (
+                  <div
+                    className="post-card__photo-holo"
+                    aria-hidden="true"
+                    style={
+                      {
+                        "--photo-url": `url(${post.main_image_url})`,
+                        maskImage: tornMask(post.id),
+                        WebkitMaskImage: tornMask(post.id),
+                      } as React.CSSProperties
+                    }
                   />
                 )}
                 {post.is_found && post.country_code && (
