@@ -27,6 +27,10 @@
   --pointer-from-center: 0;
   --pointer-from-top: 0;
   --pointer-from-left: 0;
+  /* return-to-rest duration: 0s while tracking (instant), bumped to a real
+     duration on pointer-leave so the card eases back. Set imperatively in JS
+     so it never depends on React having toggled `.interacting` yet. */
+  --return-duration: 0s;
 }
 
 .post-card,
@@ -59,6 +63,7 @@
   position: relative;
   transform: translate3d(var(--translate-x), var(--translate-y), 0.01px)
     scale(var(--card-scale));
+  transition: transform var(--return-duration) ease;
 }
 
 .post-card__rotator {
@@ -67,6 +72,7 @@
   pointer-events: auto;
   cursor: pointer;
   transition:
+    transform var(--return-duration) ease,
     box-shadow 0.4s ease,
     opacity 0.33s ease-out;
   box-shadow:
@@ -231,6 +237,7 @@
   filter: brightness(0.85) contrast(1.35) saturate(0.35);
   mix-blend-mode: color-dodge;
   opacity: calc(var(--card-opacity) * .75);
+  transition: opacity var(--return-duration) ease;
 }
 
 .post-card__photo-holo::before {
@@ -249,10 +256,6 @@
    dark regions instead — x-ray / developing-photo feel */
 .post-card[data-holo="dark"] .post-card__photo-holo::before {
   filter: invert(1);
-}
-
-.post-card:not(.interacting) .post-card__photo-holo {
-  transition: opacity 0.5s ease;
 }
 
 .post-card__footer {
@@ -364,6 +367,7 @@
   filter: brightness(0.7) contrast(1.5) saturate(0.4);
   mix-blend-mode: color-dodge;
   opacity: calc(var(--card-opacity) * 0.6);
+  transition: opacity var(--return-duration) ease;
 }
 
 .post-card__shine::before {
@@ -455,6 +459,7 @@
   );
   opacity: calc(var(--card-opacity) * 0.5);
   mix-blend-mode: overlay;
+  transition: opacity var(--return-duration) ease;
 }
 
 /* ── tier themes ── */
@@ -756,19 +761,6 @@
     contrast(calc(1.5 + var(--pointer-from-center) * 2)) saturate(0);
 }
 
-/* ── non-interactive fallback ── */
-.post-card:not(.interacting) .post-card__translater {
-  transition: transform 0.5s ease;
-}
-
-.post-card:not(.interacting) .post-card__rotator {
-  transition: transform 0.5s ease, box-shadow 0.4s ease;
-}
-
-.post-card:not(.interacting) .post-card__shine,
-.post-card:not(.interacting) .post-card__glare {
-  transition: opacity 0.5s ease;
-}
 
 /* ── vintage postal stamp ── */
 .post-card__stamp {

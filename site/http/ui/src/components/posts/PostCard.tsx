@@ -91,6 +91,7 @@ export default function PostCard({
       const card = cardRef.current;
       if (!card) return;
       const s = card.style;
+      s.setProperty("--return-duration", "0s");
       s.setProperty("--pointer-x", `${round(percent.x)}%`);
       s.setProperty("--pointer-y", `${round(percent.y)}%`);
       s.setProperty("--pointer-from-center", `${round(fromCenter)}`);
@@ -108,30 +109,31 @@ export default function PostCard({
   }, []);
 
   const interactEnd = useCallback(() => {
-    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    setInteracting(false);
-    // Defer the reset by one frame so React removes `.interacting` first; the
-    // `:not(.interacting)` transitions then animate the card smoothly back to
-    // rest instead of snapping (resetting while the class is still on the
-    // element gives the browser no active transition to interpolate).
-    rafRef.current = requestAnimationFrame(() => {
-      const card = cardRef.current;
-      if (!card) return;
-      const s = card.style;
-      s.setProperty("--pointer-x", "50%");
-      s.setProperty("--pointer-y", "50%");
-      s.setProperty("--pointer-from-center", "0");
-      s.setProperty("--pointer-from-top", "0.5");
-      s.setProperty("--pointer-from-left", "0.5");
-      s.setProperty("--card-opacity", "0");
-      s.setProperty("--rotate-x", "0deg");
-      s.setProperty("--rotate-y", "0deg");
-      s.setProperty("--background-x", "50%");
-      s.setProperty("--background-y", "50%");
-      s.setProperty("--card-scale", "1");
-      s.setProperty("--translate-y", "0px");
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
-    });
+    }
+    setInteracting(false);
+    const card = cardRef.current;
+    if (!card) return;
+    const s = card.style;
+    // Bump the transition duration BEFORE resetting the values, in the same
+    // style update, so the card eases back to rest. This is independent of when
+    // React removes `.interacting`, which avoids the snap from the event-timing
+    // race (pointerleave is a continuous-priority event, not flushed sync).
+    s.setProperty("--return-duration", "0.5s");
+    s.setProperty("--pointer-x", "50%");
+    s.setProperty("--pointer-y", "50%");
+    s.setProperty("--pointer-from-center", "0");
+    s.setProperty("--pointer-from-top", "0.5");
+    s.setProperty("--pointer-from-left", "0.5");
+    s.setProperty("--card-opacity", "0");
+    s.setProperty("--rotate-x", "0deg");
+    s.setProperty("--rotate-y", "0deg");
+    s.setProperty("--background-x", "50%");
+    s.setProperty("--background-y", "50%");
+    s.setProperty("--card-scale", "1");
+    s.setProperty("--translate-y", "0px");
   }, []);
 
   const handleCardClick = useCallback(() => {
