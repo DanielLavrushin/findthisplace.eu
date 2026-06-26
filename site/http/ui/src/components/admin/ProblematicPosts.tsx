@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   Box,
   Typography,
@@ -32,25 +33,43 @@ function formatDate(dateStr: string): string {
 
 export default function ProblematicPosts() {
   const { data: posts, isLoading, error } = useProblematicPosts();
-  const [editingPost, setEditingPost] = useState<ProblematicPost | null>(null);
+  const navigate = useNavigate();
+  const { id: idParam } = useParams();
   const [manualPostId, setManualPostId] = useState("");
 
   const handleEditManualPost = () => {
     const id = parseInt(manualPostId, 10);
     if (isNaN(id) || id <= 0) return;
-    // Create a minimal post object for the editor
-    setEditingPost({
-      id,
-      title: "",
-      main_image_url: "",
-      username: "",
-      gender: "",
-      created_date: "",
-      is_found: false,
-      tier: 0,
-    });
     setManualPostId("");
+    navigate(`/admin/posts/${id}`);
   };
+
+  // Editor view — driven by the URL so it's deep-linkable and persistent.
+  // Prefer the post from the list (full data); otherwise build a minimal
+  // object — PostEditor fetches the rest from /api/posts/{id}. Memoized so a
+  // background refetch doesn't hand PostEditor a new object and reset edits.
+  const editingId = idParam ? parseInt(idParam, 10) : null;
+  const editingPost = useMemo<ProblematicPost | null>(() => {
+    if (editingId === null || isNaN(editingId)) return null;
+    return (
+      posts?.find((p) => p.id === editingId) ?? {
+        id: editingId,
+        title: "",
+        main_image_url: "",
+        username: "",
+        gender: "",
+        created_date: "",
+        is_found: false,
+        tier: 0,
+      }
+    );
+  }, [editingId, posts]);
+
+  if (editingPost) {
+    return (
+      <PostEditor post={editingPost} onClose={() => navigate("/admin/posts")} />
+    );
+  }
 
   if (isLoading) {
     return (
@@ -73,16 +92,6 @@ export default function ProblematicPosts() {
       <Alert severity="success" sx={{ mb: 2 }}>
         Нет проблемных постов
       </Alert>
-    );
-  }
-
-  // Show editor view
-  if (editingPost) {
-    return (
-      <PostEditor
-        post={editingPost}
-        onClose={() => setEditingPost(null)}
-      />
     );
   }
 
@@ -140,7 +149,7 @@ export default function ProblematicPosts() {
                 key={post.id}
                 hover
                 sx={{ cursor: "pointer" }}
-                onClick={() => setEditingPost(post)}
+                onClick={() => navigate(`/admin/posts/${post.id}`)}
               >
                 <TableCell>
                   <Typography variant="body2" sx={{ fontFamily: "monospace" }}>
@@ -199,7 +208,7 @@ export default function ProblematicPosts() {
                       size="small"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setEditingPost(post);
+                        navigate(`/admin/posts/${post.id}`);
                       }}
                     >
                       <EditIcon />

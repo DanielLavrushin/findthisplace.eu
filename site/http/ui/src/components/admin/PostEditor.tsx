@@ -445,6 +445,11 @@ export default function PostEditor({
                   Автор: {post.username}
                 </Typography>
               )}
+              {post.found_by && (
+                <Typography variant="body2" color="text.secondary">
+                  Нашёл: {post.found_by}
+                </Typography>
+              )}
               <Link
                 href={`https://findthisplace.d3.ru/${post.id}`}
                 target="_blank"

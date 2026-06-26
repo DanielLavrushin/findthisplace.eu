@@ -28,6 +28,8 @@ function App() {
               <Route element={<Layout />}>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/admin" element={<AdminPage />} />
+                <Route path="/admin/posts" element={<AdminPage />} />
+                <Route path="/admin/posts/:id" element={<AdminPage />} />
                 <Route path="/not-found" element={<NotFoundPage />} />
                 <Route path="/map" element={<MapPage />} />
                 <Route path="/authors" element={<AuthorsPage />} />

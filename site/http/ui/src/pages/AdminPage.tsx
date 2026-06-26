@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Box, Typography, Alert, Tabs, Tab, Paper } from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
 import WarningIcon from "@mui/icons-material/Warning";
@@ -20,7 +19,8 @@ function TabPanel({ children, value, index }: TabPanelProps) {
 export default function AdminPage() {
   const { user, isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
-  const [tab, setTab] = useState(0);
+  const location = useLocation();
+  const tab = location.pathname.startsWith("/admin/posts") ? 1 : 0;
 
   // Redirect if not logged in
   if (!user && !isLoading) {
@@ -51,7 +51,7 @@ export default function AdminPage() {
       <Paper sx={{ borderRadius: 2 }}>
         <Tabs
           value={tab}
-          onChange={(_, v) => setTab(v)}
+          onChange={(_, v) => navigate(v === 1 ? "/admin/posts" : "/admin")}
           sx={{
             borderBottom: 1,
             borderColor: "divider",

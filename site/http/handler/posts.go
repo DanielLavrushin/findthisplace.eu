@@ -332,6 +332,16 @@ func (api *API) handleProblematicPosts(w http.ResponseWriter, r *http.Request) {
 			"path":                       "$user",
 			"preserveNullAndEmptyArrays": true,
 		}},
+		bson.M{"$lookup": bson.M{
+			"from":         "dirty_users",
+			"localField":   "found_by_id",
+			"foreignField": "_id",
+			"as":           "foundby",
+		}},
+		bson.M{"$unwind": bson.M{
+			"path":                       "$foundby",
+			"preserveNullAndEmptyArrays": true,
+		}},
 		bson.M{"$project": bson.M{
 			"_id":            1,
 			"title":          "$post.title",
@@ -341,6 +351,9 @@ func (api *API) handleProblematicPosts(w http.ResponseWriter, r *http.Request) {
 			"gender":         "$user.gender",
 			"created":        "$post.created",
 			"is_found":       1,
+			"found_by_id":    1,
+			"found_by":       "$foundby.login",
+			"found_date":     1,
 		}},
 		bson.M{"$sort": bson.M{"created": -1}},
 	)
@@ -379,6 +392,11 @@ func (api *API) handleProblematicPosts(w http.ResponseWriter, r *http.Request) {
 			Username:     strFromBson(doc["username"]),
 			Gender:       strFromBson(doc["gender"]),
 			IsFound:      boolFromBson(doc["is_found"]),
+			FoundByID:    intFromBson(doc["found_by_id"]),
+			FoundBy:      strFromBson(doc["found_by"]),
+		}
+		if fd, ok := doc["found_date"].(primitive.DateTime); ok && !fd.Time().IsZero() {
+			resp.FoundDate = fd.Time().UTC().Format(time.RFC3339)
 		}
 		if created, ok := doc["created"].(primitive.DateTime); ok {
 			t := created.Time()
