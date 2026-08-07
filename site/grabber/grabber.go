@@ -31,13 +31,12 @@ func Run(ctx context.Context, fullRun *bool, store *db.DB) (*Result, error) {
 
 	log.Printf("Fetching page %d", 1)
 	first, err := postApi.GetPosts(ctx, 1, perPage)
-
-	totalPages := first.PageCount
-	log.Printf("Total pages: %d", totalPages)
-
 	if err != nil {
 		return nil, err
 	}
+
+	totalPages := first.PageCount
+	log.Printf("Total pages: %d", totalPages)
 
 	res := &Result{
 		Posts:    make([]dirty.DirtyPost, 0, first.PostsTotal),

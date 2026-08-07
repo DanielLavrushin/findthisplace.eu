@@ -3,6 +3,7 @@ package grabber
 import (
 	"context"
 	"log"
+	"runtime/debug"
 	"time"
 
 	"github.com/findthisplace.eu/db"
@@ -19,7 +20,7 @@ func StartBackground(ctx context.Context, store *db.DB, sm *settings.Manager) {
 	go func() {
 		log.Println("[grabber] background scheduler started")
 
-		runIfNeeded(ctx, store, sm)
+		safeRunIfNeeded(ctx, store, sm)
 
 		ticker := time.NewTicker(checkInterval)
 		defer ticker.Stop()
@@ -30,10 +31,21 @@ func StartBackground(ctx context.Context, store *db.DB, sm *settings.Manager) {
 				log.Println("[grabber] background scheduler stopped")
 				return
 			case <-ticker.C:
-				runIfNeeded(ctx, store, sm)
+				safeRunIfNeeded(ctx, store, sm)
 			}
 		}
 	}()
+}
+
+func safeRunIfNeeded(ctx context.Context, store *db.DB, sm *settings.Manager) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[grabber] run panicked: %v\n%s", r, debug.Stack())
+			setStatus(ctx, sm, "fail")
+		}
+	}()
+
+	runIfNeeded(ctx, store, sm)
 }
 
 func runIfNeeded(ctx context.Context, store *db.DB, sm *settings.Manager) {
