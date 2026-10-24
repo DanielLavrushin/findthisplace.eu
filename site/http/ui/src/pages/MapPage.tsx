@@ -8,9 +8,9 @@ import {
 import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import SearchersList from "../components/searchers/SearchersList";
-import AuthorsList from "../components/authors/AuthorsList";
-import CountriesList from "../components/countries/CountriesList";
+import TopSearchers from "../components/searchers/TopSearchers";
+import TopAuthors from "../components/authors/TopAuthors";
+import TopCountries from "../components/countries/TopCountries";
 import PostMarker from "../components/posts/PostMarker";
 import type { NotFoundPost } from "../components/posts/useNotFoundPosts";
 
@@ -90,16 +90,17 @@ export default function MapPage() {
         </Typography>
       </Box>
 
-      <Box sx={{ display: "flex", gap: 3, mt: 4, flexWrap: "wrap", alignItems: "stretch" }}>
-        <Box sx={{ flex: 1, minWidth: 300, display: "flex" }}>
-          <SearchersList limit={10} title="Top 10 Сыщиков" viewAllLink="/searchers" />
-        </Box>
-        <Box sx={{ flex: 1, minWidth: 300, display: "flex" }}>
-          <AuthorsList limit={10} title="Top 10 Авторов" viewAllLink="/authors" />
-        </Box>
-        <Box sx={{ flex: "0 1 280px", minWidth: 240, display: "flex" }}>
-          <CountriesList limit={10} title="ТОП 10 Стран" viewAllLink="/tags" />
-        </Box>
+      <Box
+        sx={{
+          display: "grid",
+          gridTemplateColumns: { xs: "1fr", md: "repeat(3, minmax(0, 1fr))" },
+          gap: 3,
+          mt: 4,
+        }}
+      >
+        <TopSearchers />
+        <TopAuthors />
+        <TopCountries />
       </Box>
     </Box>
   );
