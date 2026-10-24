@@ -42,7 +42,7 @@ func main() {
 
 	grabberCtx, grabberCancel := context.WithCancel(ctx)
 	defer grabberCancel()
-	grabber.StartBackground(grabberCtx, store, sm)
+	g := grabber.StartBackground(grabberCtx, store, sm)
 
 	commitShort := Commit
 	if len(commitShort) > 7 {
@@ -54,7 +54,7 @@ func main() {
 		Version: fmt.Sprintf("%s.%s", Version, commitShort),
 	}
 
-	srv, err := ftphttp.StartServer(cfg, sm, store)
+	srv, err := ftphttp.StartServer(cfg, sm, store, g)
 	if err != nil {
 		log.Fatalf("failed to start server: %v", err)
 	}

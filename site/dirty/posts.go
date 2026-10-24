@@ -67,7 +67,8 @@ func (p *DirtyPost) UnmarshalJSON(data []byte) error {
 		DirtyPostAlias
 		Text string `json:"text"`
 		Data struct {
-			Text string `json:"text"`
+			Text     string `json:"text"`
+			Subtitle string `json:"subtitle"`
 		} `json:"data"`
 		Links []struct {
 			Href string `json:"href"`
@@ -85,6 +86,15 @@ func (p *DirtyPost) UnmarshalJSON(data []byte) error {
 		p.Text = tmp.Text
 	} else {
 		p.Text = tmp.Data.Text
+	}
+
+	// Gallery posts carry their description, [НАЙДЕНО] included, in the
+	// subtitle; the old grabber kept it as part of the text.
+	if s := tmp.Data.Subtitle; s != "" {
+		if p.Text != "" {
+			p.Text += "<br>"
+		}
+		p.Text += s
 	}
 
 	for _, l := range tmp.Links {

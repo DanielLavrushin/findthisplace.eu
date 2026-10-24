@@ -2,6 +2,8 @@ package grabber
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log"
 	"runtime/debug"
 	"time"
@@ -16,11 +18,39 @@ const runThreshold = 2 * time.Hour
 
 const fullRunThreshold = 24 * time.Hour
 
-func StartBackground(ctx context.Context, store *db.DB, sm *settings.Manager) {
+// ErrBusy is what Trigger returns while a run is going or already queued.
+var ErrBusy = errors.New("grabber is already running")
+
+// Grabber is the background scheduler, which the admin panel can follow and
+// ask for a run.
+type Grabber struct {
+	store    *db.DB
+	sm       *settings.Manager
+	requests chan bool // a manual run waiting to start; true asks for a full backfill
+	done     <-chan struct{}
+	progress Progress
+}
+
+// Status is the grabber as the admin panel shows it: the run in progress, or
+// the last one since the server started, and the schedule.
+type Status struct {
+	Running       bool       `json:"running"`
+	Queued        bool       `json:"queued"`
+	Run           *RunState  `json:"run,omitempty"`
+	LastRunAt     *time.Time `json:"last_run_at,omitempty"`
+	LastResult    string     `json:"last_result,omitempty"`
+	LastFullRunAt *time.Time `json:"last_full_run_at,omitempty"`
+	NextRunAt     time.Time  `json:"next_run_at"`
+	NextRunFull   bool       `json:"next_run_full"`
+}
+
+func StartBackground(ctx context.Context, store *db.DB, sm *settings.Manager) *Grabber {
+	g := &Grabber{store: store, sm: sm, requests: make(chan bool, 1), done: ctx.Done()}
+
 	go func() {
 		log.Println("[grabber] background scheduler started")
 
-		safeRunIfNeeded(ctx, store, sm)
+		g.safeRunIfNeeded(ctx, nil)
 
 		ticker := time.NewTicker(checkInterval)
 		defer ticker.Stop()
@@ -31,39 +61,101 @@ func StartBackground(ctx context.Context, store *db.DB, sm *settings.Manager) {
 				log.Println("[grabber] background scheduler stopped")
 				return
 			case <-ticker.C:
-				safeRunIfNeeded(ctx, store, sm)
+				g.safeRunIfNeeded(ctx, nil)
+			case full := <-g.requests:
+				g.safeRunIfNeeded(ctx, &full)
 			}
 		}
 	}()
+
+	return g
 }
 
-func safeRunIfNeeded(ctx context.Context, store *db.DB, sm *settings.Manager) {
+// Trigger starts a run now rather than on schedule; full makes it a full
+// backfill instead of the latest posts.
+func (g *Grabber) Trigger(full bool) error {
+	if g.progress.running() {
+		return ErrBusy
+	}
+	select {
+	case g.requests <- full:
+		g.progress.touch()
+		return nil
+	default:
+		return ErrBusy
+	}
+}
+
+// Version changes whenever Status may have changed.
+func (g *Grabber) Version() uint64 {
+	return g.progress.currentVersion()
+}
+
+// Done is closed once the scheduler stops, when the server shuts down.
+func (g *Grabber) Done() <-chan struct{} {
+	return g.done
+}
+
+func (g *Grabber) Status(ctx context.Context) Status {
+	s := Status{Queued: len(g.requests) > 0, Run: g.progress.snapshot()}
+	s.Running = s.Run != nil && s.Run.FinishedAt == nil
+
+	// Approximate: the scheduler looks every checkInterval.
+	now := time.Now()
+	s.NextRunAt = now
+	if t, err := g.sm.GetLastGrabberTime(ctx); err == nil {
+		s.LastRunAt = &t
+		if next := t.Add(runThreshold); next.After(now) {
+			s.NextRunAt = next
+		}
+	}
+	s.LastResult, _ = g.sm.GetLastGrabberStatus(ctx)
+
+	s.NextRunFull = true
+	if t, err := g.sm.GetLastFullGrabberTime(ctx); err == nil {
+		s.LastFullRunAt = &t
+		s.NextRunFull = s.NextRunAt.Sub(t) >= fullRunThreshold
+	}
+	return s
+}
+
+func (g *Grabber) safeRunIfNeeded(ctx context.Context, manual *bool) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Printf("[grabber] run panicked: %v\n%s", r, debug.Stack())
-			setStatus(ctx, sm, "fail")
+			setStatus(ctx, g.sm, "fail")
+			g.progress.finish(fmt.Errorf("panic: %v", r))
 		}
 	}()
 
-	runIfNeeded(ctx, store, sm)
+	g.runIfNeeded(ctx, manual)
 }
 
-func runIfNeeded(ctx context.Context, store *db.DB, sm *settings.Manager) {
-	if runThrottled(ctx, sm) {
-		return
+// runIfNeeded runs on schedule when manual is nil: throttled, with a full
+// backfill once a day. A manual run starts right away, full if *manual.
+func (g *Grabber) runIfNeeded(ctx context.Context, manual *bool) {
+	var fullRun bool
+	if manual != nil {
+		fullRun = *manual
+	} else {
+		if runThrottled(ctx, g.sm) {
+			return
+		}
+		fullRun = fullBackfillDue(ctx, g.sm)
 	}
 
-	fullRun := fullBackfillDue(ctx, sm)
 	if fullRun {
 		log.Println("[grabber] starting full backfill run")
 	} else {
 		log.Println("[grabber] starting incremental run")
 	}
+	g.progress.start(fullRun, manual != nil)
 
-	result, err := Run(ctx, &fullRun, store)
+	result, err := Run(ctx, &fullRun, g.store, &g.progress)
 	if err != nil {
 		log.Printf("[grabber] run failed: %v", err)
-		setStatus(ctx, sm, "fail")
+		setStatus(ctx, g.sm, "fail")
+		g.progress.finish(err)
 		return
 	}
 
@@ -73,20 +165,22 @@ func runIfNeeded(ctx context.Context, store *db.DB, sm *settings.Manager) {
 	}
 
 	log.Println("[grabber] starting ftp processing")
-	if err := ftp.Process(ctx, store, postIDs); err != nil {
+	if err := ftp.Process(ctx, g.store, postIDs, &g.progress); err != nil {
 		log.Printf("[grabber] ftp processing failed: %v", err)
-		setStatus(ctx, sm, "fail")
+		setStatus(ctx, g.sm, "fail")
+		g.progress.finish(err)
 		return
 	}
 
 	log.Println("[grabber] run completed successfully")
-	setStatus(ctx, sm, "success")
+	setStatus(ctx, g.sm, "success")
 
 	if fullRun {
-		if err := sm.SetLastFullGrabberTime(ctx, time.Now()); err != nil {
+		if err := g.sm.SetLastFullGrabberTime(ctx, time.Now()); err != nil {
 			log.Printf("[grabber] failed to set last_full_grabber_time: %v", err)
 		}
 	}
+	g.progress.finish(nil)
 }
 
 func fullBackfillDue(ctx context.Context, sm *settings.Manager) bool {
