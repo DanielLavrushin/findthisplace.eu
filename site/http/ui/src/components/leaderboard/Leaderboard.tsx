@@ -194,7 +194,6 @@ export function UserAvatar({
 
 const rowSx = {
   display: "grid",
-  gridTemplateColumns: "24px 28px minmax(0, 1fr)",
   columnGap: 1.25,
   alignItems: "center",
   height: ROW_HEIGHT,
@@ -206,7 +205,8 @@ const rowSx = {
 } as const;
 
 interface LeaderboardRowProps {
-  rank: number;
+  /** place on the board, medals for the top three; none where it's no contest */
+  rank?: number;
   avatar: ReactNode;
   name: string;
   value: number;
@@ -232,7 +232,7 @@ export function LeaderboardRow({
 }: Readonly<LeaderboardRowProps>) {
   const content = (
     <>
-      <Rank rank={rank} />
+      {rank !== undefined && <Rank rank={rank} />}
       {avatar}
       <Box sx={{ minWidth: 0 }}>
         <Box sx={{ display: "flex", alignItems: "baseline", gap: 1 }}>
@@ -254,12 +254,18 @@ export function LeaderboardRow({
     </>
   );
 
+  const sx = {
+    ...rowSx,
+    // the picture column takes what stands in it: an avatar, a flag
+    gridTemplateColumns: `${rank === undefined ? "" : "24px "}auto minmax(0, 1fr)`,
+  };
+
   const row = to ? (
     <Box
       component={RouterLink}
       to={to}
       sx={{
-        ...rowSx,
+        ...sx,
         "&:hover": { bgcolor: "action.hover" },
         "&:focus-visible": {
           outline: (theme) => `2px solid ${theme.palette.primary.main}`,
@@ -270,7 +276,7 @@ export function LeaderboardRow({
       {content}
     </Box>
   ) : (
-    <Box sx={rowSx}>{content}</Box>
+    <Box sx={sx}>{content}</Box>
   );
 
   return (

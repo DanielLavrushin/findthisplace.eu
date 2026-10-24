@@ -1,4 +1,3 @@
-import { Box } from "@mui/material";
 import ReactCountryFlag from "react-country-flag";
 import { useCountries } from "./useCountries";
 import {
@@ -10,25 +9,19 @@ import { countryName } from "../posts/cardUtils";
 
 function Flag({ code }: Readonly<{ code: string }>) {
   return (
-    <Box
-      sx={{
-        width: 28,
-        height: 28,
-        borderRadius: "50%",
-        overflow: "hidden",
-        border: "1px solid",
-        borderColor: "divider",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
+    <ReactCountryFlag
+      countryCode={code.toUpperCase()}
+      svg
+      alt=""
+      style={{
+        display: "block",
+        width: 32,
+        height: 24,
+        borderRadius: 3,
+        // an edge, or white stripes melt into the card
+        boxShadow: "0 0 0 1px rgba(0, 0, 0, 0.12)",
       }}
-    >
-      <ReactCountryFlag
-        countryCode={code.toUpperCase()}
-        svg
-        style={{ width: "140%", height: "140%", objectFit: "cover" }}
-      />
-    </Box>
+    />
   );
 }
 
@@ -48,10 +41,9 @@ export default function TopCountries() {
       viewAllLabel="Смотреть все"
       loading={isPending}
     >
-      {top.map((c, i) => (
+      {top.map((c) => (
         <LeaderboardRow
           key={c.code}
-          rank={i + 1}
           avatar={<Flag code={c.code} />}
           name={countryName(c.code)}
           value={c.count}
