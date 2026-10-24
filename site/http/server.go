@@ -9,6 +9,7 @@ import (
 
 	"github.com/findthisplace.eu/config"
 	"github.com/findthisplace.eu/db"
+	"github.com/findthisplace.eu/grabber"
 	"github.com/findthisplace.eu/http/handler"
 	"github.com/findthisplace.eu/settings"
 )
@@ -16,12 +17,12 @@ import (
 //go:embed ui/dist/*
 var uiDist embed.FS
 
-func StartServer(cfg *config.Config, sm *settings.Manager, store *db.DB) (*stdhttp.Server, error) {
+func StartServer(cfg *config.Config, sm *settings.Manager, store *db.DB, g *grabber.Grabber) (*stdhttp.Server, error) {
 
 	mux := stdhttp.NewServeMux()
 
 	registerWebSocketEndpoints(mux)
-	registerAPIEndpoints(mux, cfg, sm, store)
+	registerAPIEndpoints(mux, cfg, sm, store, g)
 
 	handler.RegisterSpa(mux, uiDist)
 
@@ -53,9 +54,9 @@ func StartServer(cfg *config.Config, sm *settings.Manager, store *db.DB) (*stdht
 func registerWebSocketEndpoints(mux *stdhttp.ServeMux) {
 }
 
-func registerAPIEndpoints(mux *stdhttp.ServeMux, cfg *config.Config, sm *settings.Manager, store *db.DB) {
+func registerAPIEndpoints(mux *stdhttp.ServeMux, cfg *config.Config, sm *settings.Manager, store *db.DB, g *grabber.Grabber) {
 
-	api := handler.NewAPIHandler(cfg, sm, store)
+	api := handler.NewAPIHandler(cfg, sm, store, g)
 	api.RegisterEndpoints(mux, cfg)
 
 }

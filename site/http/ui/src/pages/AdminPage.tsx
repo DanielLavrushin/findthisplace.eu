@@ -2,8 +2,11 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Box, Typography, Alert, Tabs, Tab, Paper } from "@mui/material";
 import SettingsIcon from "@mui/icons-material/Settings";
 import WarningIcon from "@mui/icons-material/Warning";
+import SyncIcon from "@mui/icons-material/Sync";
 import { useAuth } from "../contexts/AuthContext";
-import { SettingsManager, ProblematicPosts } from "../components/admin";
+import { SettingsManager, ProblematicPosts, GrabberPanel } from "../components/admin";
+
+const TAB_PATHS = ["/admin", "/admin/posts", "/admin/grabber"];
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -20,7 +23,11 @@ export default function AdminPage() {
   const { user, isAdmin, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const tab = location.pathname.startsWith("/admin/posts") ? 1 : 0;
+  const tab = location.pathname.startsWith("/admin/posts")
+    ? 1
+    : location.pathname.startsWith("/admin/grabber")
+      ? 2
+      : 0;
 
   // Redirect if not logged in
   if (!user && !isLoading) {
@@ -51,7 +58,7 @@ export default function AdminPage() {
       <Paper sx={{ borderRadius: 2 }}>
         <Tabs
           value={tab}
-          onChange={(_, v) => navigate(v === 1 ? "/admin/posts" : "/admin")}
+          onChange={(_, v) => navigate(TAB_PATHS[v])}
           sx={{
             borderBottom: 1,
             borderColor: "divider",
@@ -60,6 +67,7 @@ export default function AdminPage() {
         >
           <Tab icon={<SettingsIcon />} iconPosition="start" label="Настройки" />
           <Tab icon={<WarningIcon />} iconPosition="start" label="Проблемные посты" />
+          <Tab icon={<SyncIcon />} iconPosition="start" label="Граббер" />
         </Tabs>
 
         <Box sx={{ p: 2 }}>
@@ -69,6 +77,10 @@ export default function AdminPage() {
 
           <TabPanel value={tab} index={1}>
             <ProblematicPosts />
+          </TabPanel>
+
+          <TabPanel value={tab} index={2}>
+            <GrabberPanel />
           </TabPanel>
         </Box>
       </Paper>

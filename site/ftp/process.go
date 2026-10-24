@@ -14,17 +14,24 @@ import (
 
 var foundTag = regexp.MustCompile(`(?i)\[НАЙДЕНО]`)
 
-func Process(ctx context.Context, store *db.DB, postIDs []int) error {
-	if err := processComments(ctx, store, postIDs); err != nil {
+// Progress hears what Process is working on, for the admin panel.
+type Progress interface {
+	Phase(name string, total int)
+	Step(current string)
+}
+
+func Process(ctx context.Context, store *db.DB, postIDs []int, progress Progress) error {
+	if err := processComments(ctx, store, postIDs, progress); err != nil {
 		return err
 	}
 	log.Println("ftp.Process: comments completed")
 
-	if err := processPosts(ctx, store, postIDs); err != nil {
+	if err := processPosts(ctx, store, postIDs, progress); err != nil {
 		return err
 	}
 	log.Println("ftp.Process: posts completed")
 
+	progress.Phase("users", 0)
 	if err := processUsers(ctx, store); err != nil {
 		return err
 	}
@@ -34,7 +41,9 @@ func Process(ctx context.Context, store *db.DB, postIDs []int) error {
 	return nil
 }
 
-func processPosts(ctx context.Context, store *db.DB, postIDs []int) error {
+func processPosts(ctx context.Context, store *db.DB, postIDs []int, progress Progress) error {
+	progress.Phase("posts", len(postIDs))
+
 	topCommentByPost, err := loadTopComments(ctx, store, postIDs)
 	if err != nil {
 		return err
@@ -59,6 +68,7 @@ func processPosts(ctx context.Context, store *db.DB, postIDs []int) error {
 		if err := cur.Decode(&dp); err != nil {
 			return err
 		}
+		progress.Step(dp.Title)
 
 		fp := &FtpPost{
 			Id:      dp.Id,
@@ -103,11 +113,12 @@ func processPosts(ctx context.Context, store *db.DB, postIDs []int) error {
 	return cur.Err()
 }
 
-func processComments(ctx context.Context, store *db.DB, postIDs []int) error {
+func processComments(ctx context.Context, store *db.DB, postIDs []int, progress Progress) error {
 	commentIDs, err := loadCommentIDs(ctx, store, postIDs)
 	if err != nil {
 		return err
 	}
+	progress.Phase("comments", len(commentIDs))
 
 	existing, err := loadExtractedCommentIDs(ctx, store, commentIDs)
 	if err != nil {
@@ -127,6 +138,7 @@ func processComments(ctx context.Context, store *db.DB, postIDs []int) error {
 		if err := cur.Decode(&dc); err != nil {
 			return err
 		}
+		progress.Step("")
 
 		if existing[dc.Id] {
 			continue

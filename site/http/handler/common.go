@@ -5,15 +5,17 @@ import (
 
 	"github.com/findthisplace.eu/config"
 	"github.com/findthisplace.eu/db"
+	"github.com/findthisplace.eu/grabber"
 	"github.com/findthisplace.eu/settings"
 )
 
-func NewAPIHandler(cfg *config.Config, sm *settings.Manager, store *db.DB) *API {
+func NewAPIHandler(cfg *config.Config, sm *settings.Manager, store *db.DB, g *grabber.Grabber) *API {
 
 	return &API{
 		cfg:      cfg,
 		settings: sm,
 		store:    store,
+		grabber:  g,
 	}
 }
 
@@ -34,5 +36,6 @@ func (api *API) RegisterEndpoints(mux *http.ServeMux, cfg *config.Config) {
 	api.RegisterTagsApi()
 	api.RegisterPostsApi()
 	api.RegisterWebhookApi()
+	api.RegisterGrabberApi()
 
 }

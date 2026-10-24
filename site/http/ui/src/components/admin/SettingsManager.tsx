@@ -14,19 +14,17 @@ import {
   Alert,
   Tooltip,
   Chip,
-  Button,
-  Divider,
 } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 import SaveIcon from "@mui/icons-material/Save";
 import CancelIcon from "@mui/icons-material/Cancel";
 import LockIcon from "@mui/icons-material/Lock";
-import PlayArrowIcon from "@mui/icons-material/PlayArrow";
 import { useSettings, useUpdateSetting, Setting } from "./useSettings";
 
 const PROTECTED_ADMIN_ID = 25377;
 
-const GRABBER_SETTINGS = ["last_grabber_time", "last_grabber_status"];
+// Shown on the grabber tab instead.
+const GRABBER_SETTINGS = ["last_grabber_time", "last_grabber_status", "last_full_grabber_time"];
 
 const SETTING_LABELS: Record<string, string> = {
   hidden_not_found_posts: "Скрытые ненайденные посты",
@@ -212,91 +210,12 @@ function SettingRow({ setting, onSave, isSaving }: SettingRowProps) {
   );
 }
 
-interface GrabberStatusProps {
-  settings: Setting[];
-  onTrigger: () => void;
-  isTriggering: boolean;
-}
-
-function GrabberStatus({
-  settings,
-  onTrigger,
-  isTriggering,
-}: GrabberStatusProps) {
-  const lastTime = settings.find((s) => s.name === "last_grabber_time")?.value;
-  const lastStatus = settings.find(
-    (s) => s.name === "last_grabber_status",
-  )?.value;
-
-  const formattedTime = lastTime
-    ? new Date(lastTime as string).toLocaleString("ru-RU")
-    : "—";
-
-  return (
-    <Box sx={{ mb: 3 }}>
-      <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1.5 }}>
-        Граббер
-      </Typography>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 3,
-          flexWrap: "wrap",
-        }}
-      >
-        <Box>
-          <Typography variant="caption" color="text.secondary">
-            Последний запуск
-          </Typography>
-          <Typography>{formattedTime}</Typography>
-        </Box>
-        <Box>
-          <Typography variant="caption" color="text.secondary">
-            Статус
-          </Typography>
-          <Typography>{lastStatus ? String(lastStatus) : "—"}</Typography>
-        </Box>
-        <Button
-          variant="contained"
-          size="small"
-          startIcon={
-            isTriggering ? (
-              <CircularProgress size={16} color="inherit" />
-            ) : (
-              <PlayArrowIcon />
-            )
-          }
-          onClick={onTrigger}
-          disabled={isTriggering}
-        >
-          Запустить обновление
-        </Button>
-      </Box>
-    </Box>
-  );
-}
-
 export default function SettingsManager() {
-  const { data: settings, isLoading, error, refetch } = useSettings();
+  const { data: settings, isLoading, error } = useSettings();
   const updateMutation = useUpdateSetting();
-  const [isTriggering, setIsTriggering] = useState(false);
 
   const handleSave = (setting: Setting) => {
     updateMutation.mutate(setting);
-  };
-
-  const handleTriggerGrabber = async () => {
-    setIsTriggering(true);
-    try {
-      await Promise.all([
-        updateMutation.mutateAsync({ name: "last_grabber_time", value: null }),
-        updateMutation.mutateAsync({ name: "last_grabber_status", value: "" }),
-      ]);
-      refetch();
-    } finally {
-      setIsTriggering(false);
-    }
   };
 
   // Ensure all known editable settings are shown, even if they don't exist in DB yet
@@ -338,16 +257,6 @@ export default function SettingsManager() {
           Настройка сохранена
         </Alert>
       )}
-
-      {settings && settings.length > 0 && (
-        <GrabberStatus
-          settings={settings}
-          onTrigger={handleTriggerGrabber}
-          isTriggering={isTriggering}
-        />
-      )}
-
-      <Divider sx={{ my: 2 }} />
 
       <TableContainer>
         <Table size="small">

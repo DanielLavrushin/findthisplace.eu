@@ -15,7 +15,7 @@ type Result struct {
 	Users    map[int]*dirty.DirtyUser
 }
 
-func Run(ctx context.Context, fullRun *bool, store *db.DB) (*Result, error) {
+func Run(ctx context.Context, fullRun *bool, store *db.DB, progress *Progress) (*Result, error) {
 
 	log.Printf("Starting Dirty API fetcher...")
 
@@ -44,7 +44,14 @@ func Run(ctx context.Context, fullRun *bool, store *db.DB) (*Result, error) {
 		Users:    make(map[int]*dirty.DirtyUser, 9000),
 	}
 
-	processBatch(ctx, first.Posts, res)
+	// The latest feed is a single page and reports no totals.
+	total := first.PostsTotal
+	if total == 0 {
+		total = len(first.Posts)
+	}
+	progress.Phase("fetch", total)
+
+	processBatch(ctx, first.Posts, res, progress)
 
 	for page := 2; page <= totalPages; page++ {
 		log.Printf("Fetching page %d/%d", page, totalPages)
@@ -56,9 +63,10 @@ func Run(ctx context.Context, fullRun *bool, store *db.DB) (*Result, error) {
 		if len(batch.Posts) == 0 {
 			break
 		}
-		processBatch(ctx, batch.Posts, res)
+		processBatch(ctx, batch.Posts, res, progress)
 	}
 
+	progress.Phase("save", 0)
 	if err := store.Save(ctx, res.Posts, res.Comments, res.Users); err != nil {
 		return nil, fmt.Errorf("mongo save: %w", err)
 	}
@@ -66,12 +74,13 @@ func Run(ctx context.Context, fullRun *bool, store *db.DB) (*Result, error) {
 	return res, nil
 }
 
-func processBatch(ctx context.Context, posts []dirty.DirtyPost, res *Result) {
+func processBatch(ctx context.Context, posts []dirty.DirtyPost, res *Result, progress *Progress) {
 	total := len(posts)
 	commentApi := dirty.New(dirty.ApiCommentsEndpoint)
 
 	for i, post := range posts {
 		log.Printf("Processing post %d/%d (%s)", i+1, total, post.Title)
+		progress.Step(post.Title)
 
 		if post.User != nil {
 			res.Users[post.User.Id] = cloneUser(post.User)
@@ -82,6 +91,7 @@ func processBatch(ctx context.Context, posts []dirty.DirtyPost, res *Result) {
 		cr, err := commentApi.GetComments(ctx, post)
 		if err != nil {
 			log.Printf("Comments failed for post %d: %v", post.Id, err)
+			progress.Error(post.Id, err.Error())
 			continue
 		}
 
@@ -99,6 +109,7 @@ func processBatch(ctx context.Context, posts []dirty.DirtyPost, res *Result) {
 
 		res.Comments = append(res.Comments, cr.Comments...)
 		res.Posts = append(res.Posts, post)
+		progress.Fetched(len(cr.Comments))
 	}
 }
 

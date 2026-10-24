@@ -5,6 +5,7 @@ import (
 
 	"github.com/findthisplace.eu/config"
 	"github.com/findthisplace.eu/db"
+	"github.com/findthisplace.eu/grabber"
 	"github.com/findthisplace.eu/settings"
 )
 
@@ -13,4 +14,5 @@ type API struct {
 	mux      *http.ServeMux
 	settings *settings.Manager
 	store    *db.DB
+	grabber  *grabber.Grabber
 }
