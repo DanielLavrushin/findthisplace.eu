@@ -2,11 +2,8 @@ package dirty
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
-	"net/http"
-	"net/url"
 )
 
 type CommentsResponse struct {
@@ -14,35 +11,11 @@ type CommentsResponse struct {
 }
 
 func (c *DirtyApiClient) GetComments(ctx context.Context, post DirtyPost) (*CommentsResponse, error) {
-	endpoint := fmt.Sprintf(c.Base, post.Id)
-	u, err := url.Parse(endpoint)
-
+	pr, err := getJSON[CommentsResponse](ctx, c.HTTP, fmt.Sprintf(c.Base, post.Id))
 	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
-
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.HTTP.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GetComments: unexpected status %s", resp.Status)
-	}
-
-	var pr CommentsResponse
-
-	if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
 		return nil, err
 	}
 
 	log.Printf("Fetched %d comments for post %d", len(pr.Comments), post.Id)
-	return &pr, nil
+	return pr, nil
 }

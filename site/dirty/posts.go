@@ -3,9 +3,7 @@ package dirty
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
-	"net/http"
 	"net/url"
 	"strconv"
 )
@@ -39,26 +37,12 @@ func (c *DirtyApiClient) GetPosts(ctx context.Context, page int, perPage int) (*
 	q.Set("domain_prefix", "findthisplace")
 	u.RawQuery = q.Encode()
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
+	pr, err := getJSON[PageResponse](ctx, c.HTTP, u.String())
 	if err != nil {
-		return nil, err
-	}
-	resp, err := c.HTTP.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GetPosts: unexpected status %s", resp.Status)
-	}
-
-	var pr PageResponse
-	if err := json.NewDecoder(resp.Body).Decode(&pr); err != nil {
 		return nil, err
 	}
 	log.Printf("Fetched page %d with %d posts", pr.Page, len(pr.Posts))
-	return &pr, nil
+	return pr, nil
 }
 
 func (p *DirtyPost) UnmarshalJSON(data []byte) error {

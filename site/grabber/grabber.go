@@ -51,7 +51,9 @@ func Run(ctx context.Context, fullRun *bool, store *db.DB, progress *Progress) (
 	}
 	progress.Phase("fetch", total)
 
-	processBatch(ctx, first.Posts, res, progress)
+	if err := processBatch(ctx, first.Posts, res, progress); err != nil {
+		return nil, err
+	}
 
 	for page := 2; page <= totalPages; page++ {
 		log.Printf("Fetching page %d/%d", page, totalPages)
@@ -63,7 +65,9 @@ func Run(ctx context.Context, fullRun *bool, store *db.DB, progress *Progress) (
 		if len(batch.Posts) == 0 {
 			break
 		}
-		processBatch(ctx, batch.Posts, res, progress)
+		if err := processBatch(ctx, batch.Posts, res, progress); err != nil {
+			return nil, err
+		}
 	}
 
 	progress.Phase("save", 0)
@@ -74,9 +78,14 @@ func Run(ctx context.Context, fullRun *bool, store *db.DB, progress *Progress) (
 	return res, nil
 }
 
-func processBatch(ctx context.Context, posts []dirty.DirtyPost, res *Result, progress *Progress) {
+// maxFailedInARow is how many posts in a row may fail to get their comments,
+// retries and all, before the run takes d3.ru for down and stops.
+const maxFailedInARow = 3
+
+func processBatch(ctx context.Context, posts []dirty.DirtyPost, res *Result, progress *Progress) error {
 	total := len(posts)
 	commentApi := dirty.New(dirty.ApiCommentsEndpoint)
+	failed := 0
 
 	for i, post := range posts {
 		log.Printf("Processing post %d/%d (%s)", i+1, total, post.Title)
@@ -92,8 +101,12 @@ func processBatch(ctx context.Context, posts []dirty.DirtyPost, res *Result, pro
 		if err != nil {
 			log.Printf("Comments failed for post %d: %v", post.Id, err)
 			progress.Error(post.Id, err.Error())
+			if failed++; failed == maxFailedInARow {
+				return fmt.Errorf("comments failed for %d posts in a row, last: %w", failed, err)
+			}
 			continue
 		}
+		failed = 0
 
 		for j := range cr.Comments {
 			c := &cr.Comments[j]
@@ -111,6 +124,7 @@ func processBatch(ctx context.Context, posts []dirty.DirtyPost, res *Result, pro
 		res.Posts = append(res.Posts, post)
 		progress.Fetched(len(cr.Comments))
 	}
+	return nil
 }
 
 func cloneUser(u *dirty.DirtyUser) *dirty.DirtyUser {
