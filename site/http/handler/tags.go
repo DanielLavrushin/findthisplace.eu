@@ -6,10 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -24,35 +24,36 @@ type countryInfo struct {
 	Slug string
 }
 
-var (
-	countryLookup map[string]countryInfo // by lowercased tag
-	countryBySlug map[string]countryInfo
-	// every country tag, lowercased, to pick them out of a post's tags
-	countryTags bson.A
-)
+// by slug, so a tag finds its country however it is spelled:
+// "czech republic" with a no-break space, "sri–lanka" with an en dash
+var countryBySlug map[string]countryInfo
 
 func init() {
 	var raw map[string]string
 	if err := json.Unmarshal(countriesJSON, &raw); err != nil {
 		panic("handler: bad countries.json: " + err.Error())
 	}
-	countryLookup = make(map[string]countryInfo, len(raw))
 	countryBySlug = make(map[string]countryInfo, len(raw))
 	for code, name := range raw {
-		info := countryInfo{Name: name, Code: code, Slug: countrySlug(name)}
-		countryLookup[strings.ToLower(name)] = info
+		info := countryInfo{Name: name, Code: code, Slug: tagSlug(name)}
 		countryBySlug[info.Slug] = info
-		countryTags = append(countryTags, strings.ToLower(name))
 	}
 }
 
-// countrySlug turns a country tag into its URL segment:
-// "Czech Republic" → "czech-republic", "Cote D"Ivoire" → "cote-d-ivoire".
-func countrySlug(name string) string {
+// tags on a puzzle's state, not its place: never related to anything
+var statusTags = map[string]bool{
+	"не найдено":      true,
+	"условно найдено": true,
+	"найдено":         true,
+}
+
+// tagSlug turns a tag into its URL segment: "saint petersburg" →
+// "saint-petersburg", "Cote D"Ivoire" → "cote-d-ivoire"; Cyrillic stays.
+func tagSlug(tag string) string {
 	var b strings.Builder
 	gap := false
-	for _, r := range strings.ToLower(name) {
-		if r >= 'a' && r <= 'z' || r >= '0' && r <= '9' {
+	for _, r := range strings.ToLower(tag) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
 			if gap && b.Len() > 0 {
 				b.WriteByte('-')
 			}
@@ -115,16 +116,30 @@ type tagUserResponse struct {
 	timed  int
 }
 
+// tagRefResponse points at another tag's page.
+type tagRefResponse struct {
+	Tag   string `json:"tag"`
+	Slug  string `json:"slug"`
+	Code  string `json:"code,omitempty"` // a country's, for its flag
+	Count int    `json:"count"`
+}
+
 type tagDetailResponse struct {
-	Country   string            `json:"country"`
-	Code      string            `json:"code"`
-	Slug      string            `json:"slug"`
+	Tag  string `json:"tag"`
+	Slug string `json:"slug"`
+	// set when the tag is a country
+	Country string `json:"country,omitempty"`
+	Code    string `json:"code,omitempty"`
+	// the country nearly all the posts are in, when the tag is a place in one
+	Parent *tagRefResponse `json:"parent,omitempty"`
+	// the posts' other tags, the most used first
+	Related   []tagRefResponse  `json:"related"`
 	Posts     []mapPostResponse `json:"posts"`
 	Searchers []tagUserResponse `json:"searchers"`
 	Authors   []tagUserResponse `json:"authors"`
 }
 
-// how many authors and searchers a country's leaderboards show
+// how many authors and searchers a tag's leaderboards show
 const tagLeadersLimit = 10
 
 func (api *API) RegisterTagsApi() {
@@ -133,6 +148,32 @@ func (api *API) RegisterTagsApi() {
 }
 
 func (api *API) handleTags(w http.ResponseWriter, r *http.Request) {
+	bySlug, err := api.tagSpellings(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// every way each country is tagged, to be counted as that country
+	countryTags := bson.A{}
+	asCountry := bson.A{}
+	for slug, tags := range bySlug {
+		if _, ok := countryBySlug[slug]; !ok {
+			continue
+		}
+		for _, t := range tags {
+			countryTags = append(countryTags, t)
+		}
+		asCountry = append(asCountry, bson.M{
+			"case": bson.M{"$in": bson.A{"$tags", bson.M{"$literal": tags}}},
+			"then": slug,
+		})
+	}
+	if len(asCountry) == 0 {
+		setJsonHeader(w)
+		json.NewEncoder(w).Encode([]tagResponse{})
+		return
+	}
+
 	yearAgo := primitive.NewDateTimeFromTime(time.Now().AddDate(-1, 0, 0))
 
 	group := bson.M{
@@ -169,9 +210,8 @@ func (api *API) handleTags(w http.ResponseWriter, r *http.Request) {
 		bson.M{"$unwind": "$ftp"},
 		bson.M{"$match": bson.M{"ftp.is_found": true}},
 		bson.M{"$unwind": "$tags"},
-		// d3.ru tags come in either case: "France" and "france" are one country
-		bson.M{"$addFields": bson.M{"tag": bson.M{"$toLower": "$tags"}}},
-		bson.M{"$match": bson.M{"tag": bson.M{"$in": countryTags}}},
+		bson.M{"$match": bson.M{"tags": bson.M{"$in": countryTags}}},
+		bson.M{"$addFields": bson.M{"tag": bson.M{"$switch": bson.M{"branches": asCountry}}}},
 		bson.M{"$addFields": bson.M{"search_time": bson.M{"$divide": bson.A{
 			bson.M{"$subtract": bson.A{"$ftp.found_date", "$created"}},
 			1000,
@@ -201,7 +241,7 @@ func (api *API) handleTags(w http.ResponseWriter, r *http.Request) {
 
 	results := make([]tagResponse, 0, len(raw))
 	for _, doc := range raw {
-		info, ok := countryLookup[strFromBson(doc["_id"])]
+		info, ok := countryBySlug[strFromBson(doc["_id"])]
 		if !ok {
 			continue
 		}
@@ -232,18 +272,47 @@ func (api *API) handleTags(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(results)
 }
 
+// tagSpellings groups every tag on the posts by its slug: d3.ru keeps tags
+// lowercase, but they can still differ in spacing and dashes.
+func (api *API) tagSpellings(ctx context.Context) (map[string][]string, error) {
+	values, err := api.store.DirtyPosts.Distinct(ctx, "tags", bson.M{})
+	if err != nil {
+		return nil, err
+	}
+	bySlug := map[string][]string{}
+	for _, v := range values {
+		if tag, ok := v.(string); ok {
+			if s := tagSlug(tag); s != "" {
+				bySlug[s] = append(bySlug[s], tag)
+			}
+		}
+	}
+	for _, tags := range bySlug {
+		sort.Strings(tags)
+	}
+	return bySlug, nil
+}
+
 func (api *API) handleTagDetail(w http.ResponseWriter, r *http.Request) {
-	info, ok := countryBySlug[strings.ToLower(r.PathValue("slug"))]
-	if !ok {
-		http.Error(w, "country not found", http.StatusNotFound)
+	slug := tagSlug(r.PathValue("slug"))
+	bySlug, err := api.tagSpellings(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	spellings := bySlug[slug]
+	if spellings == nil {
+		spellings = []string{}
+	}
+	country, isCountry := countryBySlug[slug]
+	// a country no one has found anything in yet still has a page to say so
+	if len(spellings) == 0 && !isCountry {
+		http.Error(w, "tag not found", http.StatusNotFound)
 		return
 	}
 
 	pipeline := bson.A{
-		bson.M{"$match": bson.M{"tags": primitive.Regex{
-			Pattern: "^" + regexp.QuoteMeta(info.Name) + "$",
-			Options: "i",
-		}}},
+		bson.M{"$match": bson.M{"tags": bson.M{"$in": spellings}}},
 	}
 	pipeline = append(pipeline, api.hiddenPostStages(r.Context())...)
 	pipeline = append(pipeline,
@@ -311,6 +380,7 @@ func (api *API) handleTagDetail(w http.ResponseWriter, r *http.Request) {
 	posts := make([]mapPostResponse, 0, len(raw))
 	searchers := map[int]*tagUserResponse{}
 	authors := map[int]*tagUserResponse{}
+	related := map[string]*tagRefResponse{}
 
 	for _, doc := range raw {
 		post := mapPostResponse{
@@ -344,17 +414,81 @@ func (api *API) handleTagDetail(w http.ResponseWriter, r *http.Request) {
 
 		countTagUser(searchers, post.FoundByID, post.FoundBy, strFromBson(doc["finder_avatar"]), post.Tier, waited)
 		countTagUser(authors, post.UserID, post.Username, strFromBson(doc["author_avatar"]), post.Tier, waited)
+		countRelated(related, slug, doc["tags"])
 	}
 
-	setJsonHeader(w)
-	json.NewEncoder(w).Encode(tagDetailResponse{
-		Country:   info.Name,
-		Code:      strings.ToLower(info.Code),
-		Slug:      info.Slug,
+	resp := tagDetailResponse{
+		Slug:      slug,
+		Related:   sortedTagRefs(related),
 		Posts:     posts,
 		Searchers: topTagUsers(searchers),
 		Authors:   topTagUsers(authors),
+	}
+	if len(spellings) > 0 {
+		resp.Tag = spellings[0]
+	}
+	if isCountry {
+		resp.Country = country.Name
+		resp.Code = strings.ToLower(country.Code)
+		if resp.Tag == "" {
+			resp.Tag = country.Name
+		}
+	} else {
+		// the most used country among the related tags, if nearly every post
+		// is in it: a city is, a theme like "film locations" spans several
+		for i := range resp.Related {
+			if resp.Related[i].Code == "" {
+				continue
+			}
+			if resp.Related[i].Count*4 >= len(posts)*3 {
+				resp.Parent = &resp.Related[i]
+			}
+			break
+		}
+	}
+
+	setJsonHeader(w)
+	json.NewEncoder(w).Encode(resp)
+}
+
+// countRelated adds a post's other tags to those related to slug's.
+func countRelated(related map[string]*tagRefResponse, slug string, tags interface{}) {
+	arr, _ := tags.(primitive.A)
+	seen := make(map[string]bool, len(arr))
+	for _, t := range arr {
+		tag, ok := t.(string)
+		if !ok || statusTags[strings.ToLower(tag)] {
+			continue
+		}
+		s := tagSlug(tag)
+		if s == "" || s == slug || seen[s] {
+			continue
+		}
+		seen[s] = true
+		ref, ok := related[s]
+		if !ok {
+			ref = &tagRefResponse{Tag: tag, Slug: s}
+			if info, ok := countryBySlug[s]; ok {
+				ref.Code = strings.ToLower(info.Code)
+			}
+			related[s] = ref
+		}
+		ref.Count++
+	}
+}
+
+func sortedTagRefs(refs map[string]*tagRefResponse) []tagRefResponse {
+	list := make([]tagRefResponse, 0, len(refs))
+	for _, ref := range refs {
+		list = append(list, *ref)
+	}
+	sort.Slice(list, func(i, j int) bool {
+		if list[i].Count != list[j].Count {
+			return list[i].Count > list[j].Count
+		}
+		return list[i].Slug < list[j].Slug
 	})
+	return list
 }
 
 // countTagUser adds a post to its author's or searcher's line on the board;

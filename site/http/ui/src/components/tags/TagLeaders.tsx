@@ -1,4 +1,4 @@
-import type { CountryUser } from "./useCountryDetail";
+import type { TagUser } from "./useTagDetail";
 import {
   Breakdown,
   LeaderboardCard,
@@ -12,7 +12,7 @@ import { formatDuration } from "../../utils/formatDuration";
 interface BoardProps {
   title: string;
   subtitle: string;
-  users: CountryUser[];
+  users: TagUser[];
   /** the profile a row opens */
   profile: (id: number) => string;
   /** what the average wait means for these users */
@@ -57,7 +57,7 @@ function Board({ title, subtitle, users, profile, waitNote }: Readonly<BoardProp
   );
 }
 
-export function CountrySearchers({ users }: Readonly<{ users: CountryUser[] }>) {
+export function TagSearchers({ users }: Readonly<{ users: TagUser[] }>) {
   return (
     <Board
       title="Сыщики"
@@ -69,7 +69,7 @@ export function CountrySearchers({ users }: Readonly<{ users: CountryUser[] }>) 
   );
 }
 
-export function CountryAuthors({ users }: Readonly<{ users: CountryUser[] }>) {
+export function TagAuthors({ users }: Readonly<{ users: TagUser[] }>) {
   return (
     <Board
       title="Авторы"

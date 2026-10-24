@@ -14,7 +14,7 @@ function ago(date: string): string {
   return relative.format(-Math.floor(days / 365), "year");
 }
 
-export default function CountryFacts({
+export default function TagFacts({
   posts,
 }: Readonly<{ posts: NotFoundPost[] }>) {
   const cards = useMemo(() => {

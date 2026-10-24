@@ -71,7 +71,7 @@ type userDetailResponse struct {
 	Posts             []userPostResponse `json:"posts"`
 }
 
-// countryCodeFromTags extracts the country code from a tags array by matching against countryLookup
+// countryCodeFromTags extracts the country code from a tags array by matching against countryBySlug
 func countryCodeFromTags(tags interface{}) string {
 	arr, ok := tags.(primitive.A)
 	if !ok {
@@ -79,7 +79,7 @@ func countryCodeFromTags(tags interface{}) string {
 	}
 	for _, t := range arr {
 		if tag, ok := t.(string); ok {
-			if info, found := countryLookup[strings.ToLower(tag)]; found {
+			if info, found := countryBySlug[tagSlug(tag)]; found {
 				return strings.ToLower(info.Code)
 			}
 		}

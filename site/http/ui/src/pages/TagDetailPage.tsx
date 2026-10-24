@@ -2,30 +2,33 @@ import { useMemo, useState } from "react";
 import { useParams, Link as RouterLink } from "react-router-dom";
 import {
   Box,
+  Breadcrumbs,
   Button,
   Chip,
   CircularProgress,
+  Link,
   Paper,
   Tooltip,
   Typography,
 } from "@mui/material";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import LocalOfferOutlinedIcon from "@mui/icons-material/LocalOfferOutlined";
+import PlaceOutlinedIcon from "@mui/icons-material/PlaceOutlined";
 import { MapContainer, TileLayer } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useCountries } from "../components/countries/useCountries";
-import { useCountryDetail } from "../components/countries/useCountryDetail";
 import Flag from "../components/countries/Flag";
-import CountryFacts from "../components/countries/CountryFacts";
-import {
-  CountryAuthors,
-  CountrySearchers,
-} from "../components/countries/CountryLeaders";
-import PostsByYear from "../components/countries/PostsByYear";
+import { useTagDetail } from "../components/tags/useTagDetail";
+import TagFacts from "../components/tags/TagFacts";
+import { TagAuthors, TagSearchers } from "../components/tags/TagLeaders";
+import PostsByYear from "../components/tags/PostsByYear";
+import RelatedTags from "../components/tags/RelatedTags";
+import { tagName } from "../components/tags/tagName";
 import PostCard from "../components/posts/PostCard";
 import PostMarker from "../components/posts/PostMarker";
-import { countryName, tierMarkers } from "../components/posts/cardUtils";
+import { tierMarkers } from "../components/posts/cardUtils";
 import { TIERS } from "../components/leaderboard/Leaderboard";
 import { formatDuration } from "../utils/formatDuration";
 import { plural } from "../utils/plural";
@@ -59,19 +62,29 @@ function coreBounds(points: [number, number][]): L.LatLngBounds {
   );
 }
 
-export default function CountryDetailPage() {
+const crumbSx = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 0.5,
+  color: "text.secondary",
+  textDecoration: "none",
+  "&:hover": { color: "text.primary" },
+} as const;
+
+/** A country, a city or any other tag: its places, and who set and found them. */
+export default function TagDetailPage() {
   const { slug = "" } = useParams<{ slug: string }>();
-  // a fresh page for each country: the map takes its bounds only once
-  return <CountryProfile key={slug} slug={slug} />;
+  // a fresh page for each tag: the map takes its bounds only once
+  return <TagProfile key={slug} slug={slug} />;
 }
 
-function CountryProfile({ slug }: Readonly<{ slug: string }>) {
-  const { data: country, isLoading, error } = useCountryDetail(slug);
+function TagProfile({ slug }: Readonly<{ slug: string }>) {
+  const { data: tag, isLoading, error } = useTagDetail(slug);
   const { data: countries = [] } = useCountries();
   const [activeTier, setActiveTier] = useState<number | null>(null);
   const [limit, setLimit] = useState(PAGE_SIZE);
 
-  const posts = useMemo(() => country?.posts ?? [], [country]);
+  const posts = useMemo(() => tag?.posts ?? [], [tag]);
 
   const tierCounts = useMemo(() => {
     const counts = TIERS.map(() => 0);
@@ -103,15 +116,15 @@ function CountryProfile({ slug }: Readonly<{ slug: string }>) {
     );
   }
 
-  if (error || !country) {
+  if (error || !tag) {
     return (
       <Typography color="error" sx={{ py: 4 }}>
-        Страна не найдена
+        Такой метки нет
       </Typography>
     );
   }
 
-  const rank = countries.findIndex((c) => c.slug === country.slug) + 1;
+  const rank = tag.code ? countries.findIndex((c) => c.slug === tag.slug) + 1 : 0;
   const timed = posts.filter((p) => p.found_date && p.created_date);
   const avgWait =
     timed.length > 0
@@ -132,23 +145,17 @@ function CountryProfile({ slug }: Readonly<{ slug: string }>) {
 
   return (
     <Box>
-      <Typography
-        component={RouterLink}
-        to="/tags"
-        sx={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 0.5,
-          mb: 2,
-          color: "text.secondary",
-          textDecoration: "none",
-          fontSize: "0.875rem",
-          "&:hover": { color: "text.primary" },
-        }}
-      >
-        <ArrowBackIcon sx={{ fontSize: 16 }} />
-        Страны
-      </Typography>
+      <Breadcrumbs aria-label="Навигационная цепочка" sx={{ mb: 2, fontSize: "0.875rem" }}>
+        <Link component={RouterLink} to="/tags" sx={crumbSx}>
+          <ArrowBackIcon sx={{ fontSize: 16 }} />
+          Страны
+        </Link>
+        {tag.parent && (
+          <Link component={RouterLink} to={`/tags/${tag.parent.slug}`} sx={crumbSx}>
+            {tagName(tag.parent.tag, tag.parent.code)}
+          </Link>
+        )}
+      </Breadcrumbs>
 
       <Paper
         elevation={0}
@@ -167,14 +174,50 @@ function CountryProfile({ slug }: Readonly<{ slug: string }>) {
       >
         <Box sx={{ minWidth: 0 }}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-            <Flag code={country.code} width={64} />
+            {tag.code ? (
+              <Flag code={tag.code} width={64} />
+            ) : (
+              <Box
+                aria-hidden
+                sx={{
+                  width: 64,
+                  height: 48,
+                  borderRadius: "6px",
+                  display: "grid",
+                  placeItems: "center",
+                  bgcolor: "action.hover",
+                  color: "text.secondary",
+                }}
+              >
+                {tag.parent ? (
+                  <PlaceOutlinedIcon fontSize="large" />
+                ) : (
+                  <LocalOfferOutlinedIcon fontSize="large" />
+                )}
+              </Box>
+            )}
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="h5" sx={{ fontWeight: 700 }}>
-                {countryName(country.code)}
+                {tagName(tag.tag, tag.code)}
               </Typography>
-              <Typography variant="body2" color="text.secondary">
-                {country.country}
-                {rank > 0 && ` · ${rank}-е место из ${countries.length}`}
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ display: "flex", alignItems: "center", gap: 0.75 }}
+              >
+                {tag.code ? (
+                  <>
+                    {tag.country}
+                    {rank > 0 && ` · ${rank}-е место из ${countries.length}`}
+                  </>
+                ) : tag.parent?.code ? (
+                  <>
+                    <Flag code={tag.parent.code} width={18} />
+                    {tagName(tag.parent.tag, tag.parent.code)}
+                  </>
+                ) : (
+                  "метка"
+                )}
               </Typography>
             </Box>
           </Box>
@@ -269,7 +312,13 @@ function CountryProfile({ slug }: Readonly<{ slug: string }>) {
         </Typography>
       ) : (
         <>
-          <CountryFacts posts={posts} />
+          <RelatedTags
+            title={tag.code ? "Города и другие метки" : "Другие метки"}
+            // the country a city is in has the crumb above; every place is in it
+            tags={tag.related.filter((r) => r.slug !== tag.parent?.slug)}
+          />
+
+          <TagFacts posts={posts} />
 
           <Box
             sx={{
@@ -279,8 +328,8 @@ function CountryProfile({ slug }: Readonly<{ slug: string }>) {
               mb: 4,
             }}
           >
-            <CountrySearchers users={country.searchers} />
-            <CountryAuthors users={country.authors} />
+            <TagSearchers users={tag.searchers} />
+            <TagAuthors users={tag.authors} />
           </Box>
 
           {bounds && (

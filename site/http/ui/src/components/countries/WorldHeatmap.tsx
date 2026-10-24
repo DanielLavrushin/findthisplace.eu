@@ -15,8 +15,9 @@ import { plural } from "../../utils/plural";
 import geoData from "../../../assets/countries-110m.json";
 import alpha2toNum from "../../../assets/alpha2-to-numeric.json";
 
-// one hue, light to dark, in even steps of lightness (OKLCH L 0.93 → 0.50)
-const RAMP = ["#fce3c8", "#f8c696", "#f2a360", "#e47b30", "#cb5a1a", "#a24019"];
+// one hue, light to dark, in even steps of lightness (OKLCH L 0.93 → 0.47);
+// teal, as no tier wears it: the bars below are bronze, silver, gold, magenta
+const RAMP = ["#caf1f1", "#92dede", "#4fc6c7", "#03a9aa", "#01898a", "#006869"];
 // where each shade starts: a country has from one place to over a thousand,
 // so each class holds about three times the last
 const BREAKS = [1, 3, 11, 31, 101, 301];
@@ -170,7 +171,7 @@ export default function WorldHeatmap({ countries }: Readonly<WorldHeatmapProps>)
                           hover: {
                             outline: "none",
                             fill,
-                            stroke: country ? "#3b1d0a" : "#fff",
+                            stroke: country ? "#002e2f" : "#fff",
                             strokeWidth: (country ? 1.2 : 0.5) / position.zoom,
                             cursor: country ? "pointer" : "default",
                           },
