@@ -9,15 +9,24 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
+// mapPostResponse carries everything the post card needs, so a marker can
+// open onto the same collectible card as the post grids.
 type mapPostResponse struct {
 	Id           int     `json:"id"`
 	Title        string  `json:"title"`
 	Longitude    float64 `json:"longitude"`
 	Latitude     float64 `json:"latitude"`
+	UserID       int     `json:"user_id,omitempty"`
 	Username     string  `json:"username"`
+	Gender       string  `json:"gender"`
 	MainImageURL string  `json:"main_image_url"`
+	CreatedDate  string  `json:"created_date"`
+	IsFound      bool    `json:"is_found"`
 	FoundDate    string  `json:"found_date"`
+	FoundByID    int     `json:"found_by_id,omitempty"`
+	FoundBy      string  `json:"found_by,omitempty"`
 	Tier         int     `json:"tier"`
+	CountryCode  string  `json:"country_code,omitempty"`
 }
 
 func (api *API) RegisterMapApi() {
@@ -53,15 +62,31 @@ func (api *API) handleMapPosts(w http.ResponseWriter, r *http.Request) {
 			"path":                       "$user",
 			"preserveNullAndEmptyArrays": true,
 		}},
+		bson.M{"$lookup": bson.M{
+			"from":         "dirty_users",
+			"localField":   "found_by_id",
+			"foreignField": "_id",
+			"as":           "finder",
+		}},
+		bson.M{"$unwind": bson.M{
+			"path":                       "$finder",
+			"preserveNullAndEmptyArrays": true,
+		}},
 		bson.M{"$project": bson.M{
 			"_id":            1,
 			"title":          "$post.title",
 			"longitude":      1,
 			"latitude":       1,
+			"user_id":        "$post.user_id",
 			"username":       "$user.login",
+			"gender":         "$user.gender",
 			"main_image_url": "$post.main_image_url",
+			"is_found":       1,
 			"found_date":     1,
+			"found_by_id":    1,
+			"found_by":       "$finder.login",
 			"created":        "$post.created",
+			"tags":           "$post.tags",
 		}},
 	}
 
@@ -85,13 +110,22 @@ func (api *API) handleMapPosts(w http.ResponseWriter, r *http.Request) {
 			Title:        strFromBson(doc["title"]),
 			Longitude:    floatFromBson(doc["longitude"]),
 			Latitude:     floatFromBson(doc["latitude"]),
+			UserID:       intFromBson(doc["user_id"]),
 			Username:     strFromBson(doc["username"]),
+			Gender:       strFromBson(doc["gender"]),
 			MainImageURL: strFromBson(doc["main_image_url"]),
+			IsFound:      boolFromBson(doc["is_found"]),
+			FoundByID:    intFromBson(doc["found_by_id"]),
+			FoundBy:      strFromBson(doc["found_by"]),
+			CountryCode:  countryCodeFromTags(doc["tags"]),
 		}
 		fd, fdOk := doc["found_date"].(primitive.DateTime)
 		cd, cdOk := doc["created"].(primitive.DateTime)
 		if fdOk {
 			resp.FoundDate = fd.Time().UTC().Format(time.RFC3339)
+		}
+		if cdOk {
+			resp.CreatedDate = cd.Time().UTC().Format(time.RFC3339)
 		}
 		if fdOk && cdOk {
 			ageSec := fd.Time().Sub(cd.Time()).Seconds()

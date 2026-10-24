@@ -11,36 +11,16 @@ import {
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useUserDetail } from "../components/users/useUserDetail";
 import AuthorStats from "../components/users/AuthorStats";
 import PostCard from "../components/posts/PostCard";
+import PostMarker from "../components/posts/PostMarker";
 import { formatDuration } from "../utils/formatDuration";
 import markerIcon from "../../assets/marker.png";
-import tire0marker from "../../assets/tire0marker.png";
-import tire1marker from "../../assets/tire1marker.png";
-import tire2marker from "../../assets/tire2marker.png";
-import tire3marker from "../../assets/tire3marker.png";
-import tire4marker from "../../assets/tire4marker.png";
 import { plural } from "../utils/plural";
-
-const tierLeafletIcons = [
-  tire0marker,
-  tire1marker,
-  tire2marker,
-  tire3marker,
-  tire4marker,
-].map(
-  (icon) =>
-    new L.Icon({
-      iconUrl: icon,
-      iconSize: [32, 32],
-      iconAnchor: [16, 32],
-      popupAnchor: [0, -32],
-    }),
-);
 
 export default function AuthorDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -226,46 +206,18 @@ export default function AuthorDetailPage() {
               }}
             >
               <MapContainer
+                className="post-map"
                 bounds={bounds}
                 boundsOptions={{ padding: [30, 30] }}
                 style={{ height: "100%", width: "100%" }}
               >
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 {postsWithCoords.map((post) => (
-                  <Marker
+                  <PostMarker
                     key={post.id}
+                    post={post}
                     position={[post.latitude!, post.longitude!]}
-                    icon={tierLeafletIcons[post.tier] ?? tierLeafletIcons[0]}
-                  >
-                    <Popup>
-                      <Box sx={{ minWidth: 150 }}>
-                        {post.main_image_url && (
-                          <img
-                            src={post.main_image_url}
-                            alt=""
-                            style={{
-                              width: "100%",
-                              maxHeight: 100,
-                              objectFit: "cover",
-                              borderRadius: 4,
-                              marginBottom: 8,
-                            }}
-                          />
-                        )}
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {post.title || `Пост #${post.id}`}
-                        </Typography>
-                        {post.is_found && post.found_date && (
-                          <Typography variant="caption" color="text.secondary">
-                            Разгадан{" "}
-                            {new Date(post.found_date).toLocaleDateString(
-                              "ru-RU",
-                            )}
-                          </Typography>
-                        )}
-                      </Box>
-                    </Popup>
-                  </Marker>
+                  />
                 ))}
               </MapContainer>
             </Box>

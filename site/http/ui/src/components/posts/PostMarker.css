@@ -1,0 +1,89 @@
+/* ── a post's card on the map ──
+   The marker's popup is the post card itself: Leaflet's bubble, tip and
+   padding are stripped, and the card rises out of its pin. */
+
+/* the card sizes itself to the map's height (cqh), so it always fits
+   between the top of the map and its pin */
+.post-map {
+  container-type: size;
+}
+
+.leaflet-popup.post-marker-popup {
+  /* just clear of the pin: there is no tip to leave room for */
+  margin-bottom: 6px;
+}
+
+.post-marker-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.post-marker-popup .leaflet-popup-content {
+  margin: 0;
+}
+
+.post-marker-popup .leaflet-popup-tip-container {
+  display: none;
+}
+
+.post-marker__card {
+  /* the map's height less the auto-pan room above and below (16px + 40px)
+     and the gap to the pin */
+  width: clamp(150px, (100cqh - 64px) * var(--card-aspect), 230px);
+  transform-origin: 50% 100%;
+  /* replays on every open: Leaflet puts the popup back into the page */
+  animation: post-marker-rise 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+@keyframes post-marker-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.4) rotate(-6deg);
+  }
+}
+
+/* Leaflet colours every link in the map (.leaflet-container a), which
+   outranks the card's own link colours */
+.post-marker-popup .post-card__author {
+  color: var(--ink);
+}
+
+.post-marker-popup .post-card__author--link:hover {
+  color: var(--ink-soft);
+}
+
+.post-marker-popup .post-card__id {
+  color: var(--ink-soft);
+}
+
+.post-marker-popup .post-card__id:hover {
+  color: var(--ink);
+}
+
+/* close: a small round chip on the card's corner, far enough out that the
+   card lifting on hover doesn't slide its day count under it */
+.leaflet-container .post-marker-popup a.leaflet-popup-close-button {
+  top: -14px;
+  right: -14px;
+  border-radius: 50%;
+  background: #fff;
+  color: hsl(30, 10%, 30%);
+  box-shadow: 0 1px 4px hsla(30, 30%, 10%, 0.35);
+}
+
+.leaflet-container .post-marker-popup a.leaflet-popup-close-button:hover {
+  color: hsl(30, 15%, 10%);
+}
+
+/* while the card is out in the showcase, the chip goes with it */
+.post-marker-popup:has(.post-card.is-away) .leaflet-popup-close-button {
+  visibility: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .post-marker__card {
+    animation: none;
+  }
+}

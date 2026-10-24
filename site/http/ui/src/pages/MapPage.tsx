@@ -5,28 +5,16 @@ import {
   ToggleButtonGroup,
   Typography,
 } from "@mui/material";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import tire0marker from "../../assets/tire0marker.png";
-import tire1marker from "../../assets/tire1marker.png";
-import tire2marker from "../../assets/tire2marker.png";
-import tire3marker from "../../assets/tire3marker.png";
-import tire4marker from "../../assets/tire4marker.png";
 import SearchersList from "../components/searchers/SearchersList";
 import AuthorsList from "../components/authors/AuthorsList";
 import CountriesList from "../components/countries/CountriesList";
+import PostMarker from "../components/posts/PostMarker";
+import type { NotFoundPost } from "../components/posts/useNotFoundPosts";
 
-interface MapPost {
-  id: number;
-  title: string;
-  longitude: number;
-  latitude: number;
-  username: string;
-  main_image_url: string;
-  found_date: string;
-  tier: number;
-}
+type MapPost = NotFoundPost & { latitude: number; longitude: number };
 
 const periods = [
   { value: "7d", label: "за неделю" },
@@ -43,24 +31,6 @@ function FitBounds({ posts }: { posts: MapPost[] }) {
   }, [map, posts]);
   return null;
 }
-
-const tierIcons = [
-  tire0marker,
-  tire1marker,
-  tire2marker,
-  tire3marker,
-  tire4marker,
-];
-
-const tierLeafletIcons = tierIcons.map(
-  (icon) =>
-    new L.Icon({
-      iconUrl: icon,
-      iconSize: [32, 32],
-      iconAnchor: [16, 32],
-      popupAnchor: [0, -32],
-    }),
-);
 
 export default function MapPage() {
   const [posts, setPosts] = useState<MapPost[]>([]);
@@ -85,6 +55,7 @@ export default function MapPage() {
         }}
       >
         <MapContainer
+          className="post-map"
           center={[50, 30]}
           zoom={5}
           style={{ height: "100%", width: "100%" }}
@@ -92,46 +63,11 @@ export default function MapPage() {
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <FitBounds posts={posts} />
           {posts.map((post) => (
-            <Marker
+            <PostMarker
               key={post.id}
+              post={post}
               position={[post.latitude, post.longitude]}
-              icon={tierLeafletIcons[post.tier] ?? tierLeafletIcons[0]}
-            >
-              <Popup>
-                <Box sx={{ minWidth: 150 }}>
-                  {post.main_image_url && (
-                    <img
-                      src={post.main_image_url}
-                      alt=""
-                      style={{
-                        width: "100%",
-                        maxHeight: 100,
-                        objectFit: "cover",
-                        borderRadius: 4,
-                        marginBottom: 8,
-                      }}
-                    />
-                  )}
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                    {post.title || `Пост #${post.id}`}
-                  </Typography>
-                  {post.username && (
-                    <Typography variant="caption" color="text.secondary">
-                      {post.username}
-                    </Typography>
-                  )}
-                  {post.found_date && (
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ display: "block" }}
-                    >
-                      {new Date(post.found_date).toLocaleDateString("ru-RU")}
-                    </Typography>
-                  )}
-                </Box>
-              </Popup>
-            </Marker>
+            />
           ))}
         </MapContainer>
       </Box>

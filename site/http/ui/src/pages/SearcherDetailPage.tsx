@@ -10,12 +10,13 @@ import {
   Typography,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import { MapContainer, TileLayer } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useUserDetail } from "../components/users/useUserDetail";
 import SearcherStats from "../components/users/SearcherStats";
 import PostCard from "../components/posts/PostCard";
+import PostMarker from "../components/posts/PostMarker";
 import markerIcon from "../../assets/marker.png";
 import tire0marker from "../../assets/tire0marker.png";
 import tire1marker from "../../assets/tire1marker.png";
@@ -33,16 +34,6 @@ const tierIcons = [
 ];
 const tierLabels = ["< 6 мес", "6м–1г", "1–2г", "2–5л", "5+ лет"];
 const tierColors = ["#666666", "#B87333", "#A8A8A8", "#F5A623", "#B044AA"];
-
-const tierLeafletIcons = tierIcons.map(
-  (icon) =>
-    new L.Icon({
-      iconUrl: icon,
-      iconSize: [32, 32],
-      iconAnchor: [16, 32],
-      popupAnchor: [0, -32],
-    }),
-);
 
 export default function SearcherDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -232,48 +223,18 @@ export default function SearcherDetailPage() {
                 }}
               >
                 <MapContainer
+                  className="post-map"
                   bounds={bounds}
                   boundsOptions={{ padding: [30, 30] }}
                   style={{ height: "100%", width: "100%" }}
                 >
                   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                   {postsWithCoords.map((post) => (
-                    <Marker
+                    <PostMarker
                       key={post.id}
+                      post={post}
                       position={[post.latitude!, post.longitude!]}
-                      icon={tierLeafletIcons[post.tier] ?? tierLeafletIcons[0]}
-                    >
-                      <Popup>
-                        <Box sx={{ minWidth: 150 }}>
-                          {post.main_image_url && (
-                            <img
-                              src={post.main_image_url}
-                              alt=""
-                              style={{
-                                width: "100%",
-                                maxHeight: 100,
-                                objectFit: "cover",
-                                borderRadius: 4,
-                                marginBottom: 8,
-                              }}
-                            />
-                          )}
-                          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                            {post.title || `Пост #${post.id}`}
-                          </Typography>
-                          {post.found_date && (
-                            <Typography
-                              variant="caption"
-                              color="text.secondary"
-                            >
-                              {new Date(post.found_date).toLocaleDateString(
-                                "ru-RU",
-                              )}
-                            </Typography>
-                          )}
-                        </Box>
-                      </Popup>
-                    </Marker>
+                    />
                   ))}
                 </MapContainer>
               </Box>
