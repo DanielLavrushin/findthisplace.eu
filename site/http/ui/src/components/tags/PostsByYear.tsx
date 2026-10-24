@@ -3,8 +3,8 @@ import { Box, Tooltip, Typography, type SxProps, type Theme } from "@mui/materia
 import type { NotFoundPost } from "../posts/useNotFoundPosts";
 import { plural } from "../../utils/plural";
 
-// a deep shade of the world map's teal (WorldHeatmap), 4:1 on white
-const BAR_COLOR = "#01898a";
+// a deep shade of the world map's green (WorldHeatmap), 4.6:1 on white
+const BAR_COLOR = "#4e813b";
 const MAX_LABELS = 6;
 
 // in px: to sx, a width of 1 is 100%

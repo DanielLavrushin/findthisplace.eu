@@ -1,7 +1,5 @@
 import { useMemo, useState } from "react";
-import { Box, IconButton, Paper, Tooltip, Typography } from "@mui/material";
-import AddIcon from "@mui/icons-material/Add";
-import RemoveIcon from "@mui/icons-material/Remove";
+import { Box, Paper, Tooltip, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import {
   ComposableMap,
@@ -15,13 +13,19 @@ import { plural } from "../../utils/plural";
 import geoData from "../../../assets/countries-110m.json";
 import alpha2toNum from "../../../assets/alpha2-to-numeric.json";
 
-// one hue, light to dark, in even steps of lightness (OKLCH L 0.93 → 0.47);
-// teal, as no tier wears it: the bars below are bronze, silver, gold, magenta
-const RAMP = ["#caf1f1", "#92dede", "#4fc6c7", "#03a9aa", "#01898a", "#006869"];
+// the OpenStreetMap tiles' own colours (openstreetmap-carto), so this map
+// reads as the same map as the ones the places are pinned on
+const OSM_WATER = "#aad3df";
+const OSM_LAND = "#f2efe9";
+const OSM_BORDER = "#8d618b";
+
+// one hue, light to dark, in even steps of lightness (OKLCH L 0.90 → 0.46):
+// the green of OSM's woods, clear of its land and water, and of every tier's
+// colour in the bars below (bronze, silver, gold, magenta)
+const RAMP = ["#c6eaba", "#a4d494", "#81ba6e", "#649e50", "#4e813b", "#3a652a"];
 // where each shade starts: a country has from one place to over a thousand,
 // so each class holds about three times the last
 const BREAKS = [1, 3, 11, 31, 101, 301];
-const NO_POSTS = "#ededed";
 const ANTARCTICA = "010";
 
 const WIDTH = 800;
@@ -56,6 +60,23 @@ function zoomGesture(event: WheelEvent | MouseEvent | TouchEvent): boolean {
   return !(event as MouseEvent).button;
 }
 
+// Leaflet's own zoom buttons, as on the other maps
+const zoomButtonSx = {
+  display: "block",
+  width: 30,
+  height: 30,
+  p: 0,
+  border: 0,
+  bgcolor: "#fff",
+  color: "#000",
+  font: "bold 22px 'Lucida Console', Monaco, monospace",
+  lineHeight: "30px",
+  textAlign: "center",
+  cursor: "pointer",
+  "&:hover": { bgcolor: "#f4f4f4" },
+  "&:disabled": { bgcolor: "#f4f4f4", color: "#bbb", cursor: "default" },
+} as const;
+
 function Swatch({ color, label }: Readonly<{ color: string; label: string }>) {
   return (
     <Box
@@ -63,7 +84,14 @@ function Swatch({ color, label }: Readonly<{ color: string; label: string }>) {
       sx={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 0.5 }}
     >
       <Box
-        sx={{ width: { xs: 46, sm: 56 }, height: 10, borderRadius: "3px", bgcolor: color }}
+        sx={{
+          width: { xs: 46, sm: 56 },
+          height: 10,
+          borderRadius: "3px",
+          bgcolor: color,
+          // an edge, or the pale land melts into the card
+          boxShadow: "inset 0 0 0 1px rgba(0, 0, 0, 0.08)",
+        }}
       />
       <Typography
         variant="caption"
@@ -110,122 +138,140 @@ export default function WorldHeatmap({ countries }: Readonly<WorldHeatmapProps>)
     <Paper
       elevation={0}
       sx={{
-        position: "relative",
         p: { xs: 1.5, sm: 2 },
         borderRadius: 3,
         border: "1px solid",
         borderColor: "divider",
-        overflow: "hidden",
       }}
     >
-      {/* the list of countries below says all the map does, in words */}
-      <ComposableMap
-        aria-hidden
-        projectionConfig={{ rotate: [-10, 0, 0], scale: 155, center: [0, 12] }}
-        width={WIDTH}
-        height={HEIGHT}
-        style={{ width: "100%", height: "auto", display: "block" }}
-      >
-        <ZoomableGroup
-          center={position.coordinates}
-          zoom={position.zoom}
-          maxZoom={MAX_ZOOM}
-          translateExtent={[
-            [0, 0],
-            [WIDTH, HEIGHT],
-          ]}
-          filterZoomEvent={zoomGesture}
-          onMoveEnd={setPosition}
-        >
-          <Geographies geography={geoData}>
-            {({ geographies }) =>
-              geographies
-                .filter((geo) => geo.id !== ANTARCTICA)
-                .map((geo) => {
-                  const country = byNumId[geo.id];
-                  const code = country?.code ?? codeByNumId[geo.id];
-                  const name = code ? countryName(code) : geo.properties.name;
-                  const fill = country ? RAMP[shadeOf(country.count)] : NO_POSTS;
-                  return (
-                    <Tooltip
-                      key={geo.rsmKey}
-                      title={
-                        country
-                          ? `${name} · ${plural(country.count, "место")}`
-                          : `${name} · пока ни одного места`
-                      }
-                      followCursor
-                    >
-                      <Geography
-                        geography={geo}
-                        fill={fill}
-                        stroke="#fff"
-                        strokeWidth={0.5 / position.zoom}
-                        onClick={
-                          country
-                            ? () => navigate(`/tags/${country.slug}`)
-                            : undefined
-                        }
-                        style={{
-                          default: { outline: "none" },
-                          hover: {
-                            outline: "none",
-                            fill,
-                            stroke: country ? "#002e2f" : "#fff",
-                            strokeWidth: (country ? 1.2 : 0.5) / position.zoom,
-                            cursor: country ? "pointer" : "default",
-                          },
-                          pressed: { outline: "none", fill },
-                        }}
-                      />
-                    </Tooltip>
-                  );
-                })
-            }
-          </Geographies>
-        </ZoomableGroup>
-      </ComposableMap>
-
       <Box
         sx={{
-          position: "absolute",
-          top: { xs: 8, sm: 12 },
-          left: { xs: 8, sm: 12 },
-          display: "flex",
-          flexDirection: "column",
+          position: "relative",
+          borderRadius: 2,
+          overflow: "hidden",
           border: "1px solid",
           borderColor: "divider",
-          borderRadius: 2,
-          bgcolor: "background.paper",
-          overflow: "hidden",
+          bgcolor: OSM_WATER,
         }}
       >
-        <Tooltip title="Приблизить (или Ctrl + колесо)" placement="right">
-          <span>
-            <IconButton
-              size="small"
-              aria-label="Приблизить карту"
-              disabled={position.zoom >= MAX_ZOOM}
-              onClick={() => zoomBy(1.6)}
-              sx={{ borderRadius: 0 }}
-            >
-              <AddIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title="Отдалить" placement="right">
-          <span>
-            <IconButton
-              size="small"
-              aria-label="Отдалить карту"
-              disabled={position.zoom <= 1}
-              onClick={() => zoomBy(1 / 1.6)}
-              sx={{ borderRadius: 0, borderTop: "1px solid", borderColor: "divider" }}
-            >
-              <RemoveIcon fontSize="small" />
-            </IconButton>
-          </span>
-        </Tooltip>
+        {/* the list of countries below says all the map does, in words */}
+        <ComposableMap
+          aria-hidden
+          projectionConfig={{ rotate: [-10, 0, 0], scale: 155, center: [0, 12] }}
+          width={WIDTH}
+          height={HEIGHT}
+          style={{ width: "100%", height: "auto", display: "block" }}
+        >
+          <ZoomableGroup
+            center={position.coordinates}
+            zoom={position.zoom}
+            maxZoom={MAX_ZOOM}
+            translateExtent={[
+              [0, 0],
+              [WIDTH, HEIGHT],
+            ]}
+            filterZoomEvent={zoomGesture}
+            onMoveEnd={setPosition}
+          >
+            <Geographies geography={geoData}>
+              {({ geographies, borders }) => (
+                <>
+                  {geographies
+                    .filter((geo) => geo.id !== ANTARCTICA)
+                    .map((geo) => {
+                      const country = byNumId[geo.id];
+                      const code = country?.code ?? codeByNumId[geo.id];
+                      const name = code ? countryName(code) : geo.properties.name;
+                      const fill = country ? RAMP[shadeOf(country.count)] : OSM_LAND;
+                      return (
+                        <Tooltip
+                          key={geo.rsmKey}
+                          title={
+                            country
+                              ? `${name} · ${plural(country.count, "место")}`
+                              : `${name} · пока ни одного места`
+                          }
+                          followCursor
+                        >
+                          <Geography
+                            geography={geo}
+                            fill={fill}
+                            // in its own colour: closes the hairline seams
+                            // neighbours leave, which would show the sea through
+                            stroke={fill}
+                            strokeWidth={0.5 / position.zoom}
+                            onClick={
+                              country
+                                ? () => navigate(`/tags/${country.slug}`)
+                                : undefined
+                            }
+                            style={{
+                              default: { outline: "none" },
+                              hover: {
+                                outline: "none",
+                                fill,
+                                stroke: country ? "#3d2a3c" : fill,
+                                strokeWidth: (country ? 1.2 : 0.5) / position.zoom,
+                                cursor: country ? "pointer" : "default",
+                              },
+                              pressed: { outline: "none", fill },
+                            }}
+                          />
+                        </Tooltip>
+                      );
+                    })}
+                  {/* land borders only, as OSM draws them: coasts get no line */}
+                  {borders && (
+                    <path
+                      d={borders.svgPath}
+                      fill="none"
+                      stroke={OSM_BORDER}
+                      strokeOpacity={0.6}
+                      strokeWidth={0.6 / position.zoom}
+                      strokeLinejoin="round"
+                      pointerEvents="none"
+                    />
+                  )}
+                </>
+              )}
+            </Geographies>
+          </ZoomableGroup>
+        </ComposableMap>
+
+        <Box
+          sx={{
+            position: "absolute",
+            top: 10,
+            left: 10,
+            border: "2px solid rgba(0, 0, 0, 0.2)",
+            borderRadius: "4px",
+            backgroundClip: "padding-box",
+            overflow: "hidden",
+          }}
+        >
+          <Box
+            component="button"
+            type="button"
+            title="Приблизить (или Ctrl + колесо)"
+            aria-label="Приблизить карту"
+            disabled={position.zoom >= MAX_ZOOM}
+            onClick={() => zoomBy(1.6)}
+            sx={{ ...zoomButtonSx, borderBottom: "1px solid #ccc" }}
+          >
+            +
+          </Box>
+          <Box
+            component="button"
+            type="button"
+            title="Отдалить"
+            aria-label="Отдалить карту"
+            disabled={position.zoom <= 1}
+            onClick={() => zoomBy(1 / 1.6)}
+            sx={zoomButtonSx}
+          >
+            −
+          </Box>
+        </Box>
       </Box>
 
       <Box
@@ -236,7 +282,7 @@ export default function WorldHeatmap({ countries }: Readonly<WorldHeatmapProps>)
           justifyContent: "center",
           columnGap: 2,
           rowGap: 1,
-          mt: 1,
+          mt: 1.5,
         }}
       >
         <Typography variant="caption" color="text.secondary">
@@ -251,7 +297,7 @@ export default function WorldHeatmap({ countries }: Readonly<WorldHeatmapProps>)
           ))}
         </Box>
         <Box component="ul" sx={{ listStyle: "none", m: 0, p: 0 }}>
-          <Swatch color={NO_POSTS} label="пока нет" />
+          <Swatch color={OSM_LAND} label="пока нет" />
         </Box>
       </Box>
     </Paper>

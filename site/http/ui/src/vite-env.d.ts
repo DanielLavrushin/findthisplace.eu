@@ -29,7 +29,13 @@ declare module "react-simple-maps" {
   }
   interface GeographiesProps {
     geography: string | Record<string, unknown>;
-    children: (data: { geographies: Geography[] }) => ReactNode;
+    children: (data: {
+      geographies: Geography[];
+      /** the borders countries share, as one path: no coastlines */
+      borders?: { svgPath: string };
+      /** the coastlines alone */
+      outline?: { svgPath: string };
+    }) => ReactNode;
   }
   interface Geography {
     rsmKey: string;
