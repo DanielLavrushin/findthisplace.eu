@@ -1,13 +1,13 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback } from "react";
 import { Link } from "react-router-dom";
 import ReactCountryFlag from "react-country-flag";
 import type { NotFoundPost } from "./useNotFoundPosts";
+import { useHoloTilt } from "./useHoloTilt";
 import tire0marker from "../../../assets/tire0marker.png";
 import tire1marker from "../../../assets/tire1marker.png";
 import tire2marker from "../../../assets/tire2marker.png";
 import tire3marker from "../../../assets/tire3marker.png";
 import tire4marker from "../../../assets/tire4marker.png";
-import glitterImg from "../../../assets/glitter.png";
 import "./PostCard.css";
 
 const tierMarkers = [
@@ -17,31 +17,6 @@ const tierMarkers = [
   tire3marker,
   tire4marker,
 ];
-
-// "bright" = light passes through bright areas of the photo (sun-glint look)
-// "dark"   = light passes through dark areas of the photo (x-ray / developing look)
-// Flip this to compare the two inversions on the real cards.
-const PHOTO_HOLO_MODE: "bright" | "dark" = "bright";
-
-function clamp(val: number, min = 0, max = 100) {
-  return Math.min(Math.max(val, min), max);
-}
-
-function round(val: number, precision = 3) {
-  return Number.parseFloat(val.toFixed(precision));
-}
-
-function adjust(
-  val: number,
-  fromMin: number,
-  fromMax: number,
-  toMin: number,
-  toMax: number,
-) {
-  return round(
-    toMin + ((val - fromMin) / (fromMax - fromMin)) * (toMax - toMin),
-  );
-}
 
 function tornMask(seed: number): string {
   return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='4' seed='${seed}'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='15'/%3E%3C/filter%3E%3Crect width='200' height='200' rx='8' filter='url(%23f)' fill='white'/%3E%3C/svg%3E")`;
@@ -62,79 +37,8 @@ export default function PostCard({
   post,
   foundDate,
 }: Readonly<Props>) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const rafRef = useRef<number | null>(null);
-  const [interacting, setInteracting] = useState(false);
-
-  const interact = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
-    setInteracting(true);
-
-    const el = e.currentTarget;
-    const rect = el.getBoundingClientRect();
-    const absolute = {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-    };
-    const percent = {
-      x: clamp(round((100 / rect.width) * absolute.x)),
-      y: clamp(round((100 / rect.height) * absolute.y)),
-    };
-    const center = {
-      x: percent.x - 50,
-      y: percent.y - 50,
-    };
-
-    const fromCenter = clamp(Math.hypot(center.x, center.y) / 50, 0, 1);
-
-    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(() => {
-      const card = cardRef.current;
-      if (!card) return;
-      const s = card.style;
-      s.setProperty("--return-duration", "0s");
-      s.setProperty("--pointer-x", `${round(percent.x)}%`);
-      s.setProperty("--pointer-y", `${round(percent.y)}%`);
-      s.setProperty("--pointer-from-center", `${round(fromCenter)}`);
-      s.setProperty("--pointer-from-top", `${round(percent.y / 100)}`);
-      s.setProperty("--pointer-from-left", `${round(percent.x / 100)}`);
-      s.setProperty("--card-opacity", "1");
-      s.setProperty("--rotate-x", `${round(-(center.x / 3.5))}deg`);
-      s.setProperty("--rotate-y", `${round(center.y / 3.5)}deg`);
-      s.setProperty("--background-x", `${adjust(percent.x, 0, 100, 37, 63)}%`);
-      s.setProperty("--background-y", `${adjust(percent.y, 0, 100, 33, 67)}%`);
-      s.setProperty("--card-scale", "1.05");
-      s.setProperty("--translate-y", "-5px");
-      rafRef.current = null;
-    });
-  }, []);
-
-  const interactEnd = useCallback(() => {
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    setInteracting(false);
-    const card = cardRef.current;
-    if (!card) return;
-    const s = card.style;
-    // Bump the transition duration BEFORE resetting the values, in the same
-    // style update, so the card eases back to rest. This is independent of when
-    // React removes `.interacting`, which avoids the snap from the event-timing
-    // race (pointerleave is a continuous-priority event, not flushed sync).
-    s.setProperty("--return-duration", "0.5s");
-    s.setProperty("--pointer-x", "50%");
-    s.setProperty("--pointer-y", "50%");
-    s.setProperty("--pointer-from-center", "0");
-    s.setProperty("--pointer-from-top", "0.5");
-    s.setProperty("--pointer-from-left", "0.5");
-    s.setProperty("--card-opacity", "0");
-    s.setProperty("--rotate-x", "0deg");
-    s.setProperty("--rotate-y", "0deg");
-    s.setProperty("--background-x", "50%");
-    s.setProperty("--background-y", "50%");
-    s.setProperty("--card-scale", "1");
-    s.setProperty("--translate-y", "0px");
-  }, []);
+  const { cardRef, active, onPointerMove, onPointerLeave } =
+    useHoloTilt<HTMLDivElement>();
 
   const handleCardClick = useCallback(() => {
     window.open(
@@ -162,26 +66,32 @@ export default function PostCard({
   return (
     <div
       ref={cardRef}
-      className={`post-card${interacting ? " interacting" : ""}`}
+      className={`post-card${active ? " interacting" : ""}`}
       data-tier={post.tier}
-      data-holo={PHOTO_HOLO_MODE}
-      style={
-        { "--glitter": `url(${glitterImg})` } as React.CSSProperties
-      }
     >
       <div className="post-card__translater">
         <div
           className="post-card__rotator"
-          onPointerMove={interact}
-          onPointerLeave={interactEnd}
+          onPointerMove={onPointerMove}
+          onPointerLeave={onPointerLeave}
           onClick={handleCardClick}
           onKeyDown={handleKeyDown}
           role="button"
           tabIndex={0}
           aria-label={`View post: ${post.title}`}
-          style={{ cursor: "pointer" }}
         >
           <div className="post-card__front">
+            <div className="post-card__body" />
+
+            {/* reverse-holo foil: lies on the card stock, under the print */}
+            {active && (
+              <div className="post-card__foil" aria-hidden="true">
+                <div className="post-card__foil-sheen" />
+                <div className="post-card__foil-pattern" />
+                <div className="post-card__foil-flakes" />
+              </div>
+            )}
+
             <div className="post-card__content">
               <div className="post-card__header">
                 <img className="post-card__header-marker" src={marker} alt="" />
@@ -196,49 +106,62 @@ export default function PostCard({
               <div className="post-card__title">{post.title}</div>
 
               <div className="post-card__image-wrap">
-                {post.main_image_url && (
-                  <img
-                    className="post-card__image"
-                    src={post.main_image_url}
-                    alt={post.title}
-                    loading="lazy"
-                    style={{
-                      maskImage: tornMask(post.id),
-                      WebkitMaskImage: tornMask(post.id),
-                    }}
-                  />
-                )}
-                {post.main_image_url && (
-                  <div
-                    className="post-card__photo-holo"
-                    aria-hidden="true"
-                    style={
-                      {
-                        "--photo-url": `url(${post.main_image_url})`,
-                        maskImage: tornMask(post.id),
-                        WebkitMaskImage: tornMask(post.id),
-                      } as React.CSSProperties
-                    }
-                  />
-                )}
-                {post.is_found && post.country_code && (
-                  <div className="post-card__stamp">
-                    <div className="post-card__stamp-inner">
-                      <ReactCountryFlag
-                        countryCode={post.country_code.toUpperCase()}
-                        svg
-                        style={{
-                          width: "70%",
-                          height: "70%",
-                          objectFit: "cover",
-                          borderRadius: "2px",
-                          filter: "saturate(0.9) contrast(1.05)",
-                        }}
-                      />
-                      <div className="post-card__stamp-holo" />
+                <div
+                  className="post-card__photo"
+                  style={
+                    post.main_image_url
+                      ? ({
+                          "--torn": tornMask(post.id),
+                          "--photo-url": `url(${JSON.stringify(post.main_image_url)})`,
+                        } as React.CSSProperties)
+                      : undefined
+                  }
+                >
+                  {post.main_image_url && (
+                    <>
+                      <div className="post-card__photo-shadow">
+                        <div />
+                      </div>
+                      <div className="post-card__photo-rim" />
+                      <div className="post-card__photo-print">
+                        <img
+                          className="post-card__image"
+                          src={post.main_image_url}
+                          alt={post.title}
+                          loading="lazy"
+                        />
+                        {/* light raking across the photo: relief + etched holo */}
+                        {active && (
+                          <div className="post-card__photo-fx" aria-hidden="true">
+                            <div className="post-card__relief">
+                              <div />
+                              <div />
+                            </div>
+                            <div className="post-card__photo-holo" />
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                  {post.is_found && post.country_code && (
+                    <div className="post-card__stamp">
+                      <div className="post-card__stamp-inner">
+                        <ReactCountryFlag
+                          countryCode={post.country_code.toUpperCase()}
+                          svg
+                          style={{
+                            width: "70%",
+                            height: "70%",
+                            objectFit: "cover",
+                            borderRadius: "2px",
+                            filter: "saturate(0.9) contrast(1.05)",
+                          }}
+                        />
+                        <div className="post-card__stamp-holo" />
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               <div className="post-card__footer">
@@ -287,8 +210,7 @@ export default function PostCard({
             </div>
           </div>
 
-          <div className="post-card__shine" />
-          <div className="post-card__glare" />
+          {active && <div className="post-card__glare" />}
         </div>
       </div>
     </div>

@@ -2,11 +2,19 @@
   --card-aspect: 0.718;
   --card-radius: 4.55% / 3.5%;
   --card-edge: hsl(47, 100%, 78%);
-  --card-back: hsl(40, 50%, 85%);
+
+  --sunpillar-1: hsl(2, 100%, 73%);
+  --sunpillar-2: hsl(53, 100%, 69%);
+  --sunpillar-3: hsl(93, 100%, 69%);
+  --sunpillar-4: hsl(176, 100%, 76%);
+  --sunpillar-5: hsl(228, 100%, 74%);
+  --sunpillar-6: hsl(283, 100%, 73%);
 }
 
-/* ── base card ── */
+/* ── base card ──
+   Pointer/tilt variables are written every frame by useHoloTilt. */
 .post-card {
+  container-type: inline-size;
   transform: translate3d(0, 0, 0.01px);
   min-width: 0;
   pointer-events: none;
@@ -16,25 +24,53 @@
 
   --pointer-x: 50%;
   --pointer-y: 50%;
+  --pointer-from-top: 0.5;
+  --pointer-from-left: 0.5;
+  --light-x: 0;
+  --light-y: 0;
   --card-scale: 1;
   --card-opacity: 0;
-  --translate-x: 0px;
   --translate-y: 0px;
   --rotate-x: 0deg;
   --rotate-y: 0deg;
   --background-x: 50%;
   --background-y: 50%;
-  --pointer-from-center: 0;
-  --pointer-from-top: 0;
-  --pointer-from-left: 0;
-  /* return-to-rest duration: 0s while tracking (instant), bumped to a real
-     duration on pointer-leave so the card eases back. Set imperatively in JS
-     so it never depends on React having toggled `.interacting` yet. */
-  --return-duration: 0s;
+
+  /* printed card */
+  --frame: 3.6cqw;
+  --body-radius: 1.8cqw;
+  --frame-bg: linear-gradient(
+    155deg,
+    hsl(49, 96%, 82%) 0%,
+    hsl(46, 90%, 70%) 30%,
+    hsl(49, 96%, 80%) 52%,
+    hsl(43, 82%, 64%) 78%,
+    hsl(47, 92%, 74%) 100%
+  );
+  --ink: hsl(30, 15%, 10%);
+  --ink-soft: hsl(30, 10%, 30%);
+
+  /* tier knobs, overridden in the tier themes at the bottom */
+  --tier-bg: linear-gradient(135deg, #faf6ee 0%, #f0e8d8 100%);
+  --tier-glow: hsl(40, 30%, 70%);
+  --print-pattern: none;
+  --print-opacity: 0;
+  --foil-sheen: hsla(0, 0%, 100%, 0.6);
+  --foil-sheen-strength: 0;
+  --foil-pattern: 0;
+  --foil-flakes: 0;
+  --foil-inset: var(--frame);
+  --foil-radius: var(--body-radius);
+  --flake-tint: saturate(1);
+  --flake-glitter-tint: saturate(1.5);
+  --relief: 0;
+  --photo-holo: 0;
+  --glare: 0.6;
 }
 
 .post-card,
 .post-card * {
+  /* anti-aliases the edges of 3d-transformed layers */
   outline: 1px solid transparent;
 }
 
@@ -61,37 +97,37 @@
 .post-card__translater {
   width: auto;
   position: relative;
-  transform: translate3d(var(--translate-x), var(--translate-y), 0.01px)
+  transform: translate3d(0, var(--translate-y), 0.01px)
     scale(var(--card-scale));
-  transition: transform var(--return-duration) ease;
 }
 
 .post-card__rotator {
   transform: rotateY(var(--rotate-x)) rotateX(var(--rotate-y));
-  transform-style: preserve-3d;
   pointer-events: auto;
   cursor: pointer;
-  transition:
-    transform var(--return-duration) ease,
-    box-shadow 0.4s ease,
-    opacity 0.33s ease-out;
+  transition: box-shadow 0.4s ease;
   box-shadow:
     0 0 3px -1px transparent,
     0 0 2px 1px transparent,
-    0 0 5px 0px transparent,
-    0px 10px 20px -5px rgba(0, 0, 0, 0.25),
-    0 2px 15px -5px rgba(0, 0, 0, 0.15),
-    0 0 20px 0px transparent;
+    0 1px 2px 0 hsla(30, 30%, 10%, 0.22),
+    0 6px 12px -4px hsla(30, 30%, 10%, 0.28),
+    0 16px 28px -14px hsla(30, 30%, 10%, 0.4),
+    0 0 20px 0 transparent;
 }
 
 .post-card.interacting .post-card__rotator {
   box-shadow:
     0 0 3px -1px white,
     0 0 3px 1px var(--card-edge),
-    0 0 12px 2px var(--tier-glow, hsl(40, 80%, 70%)),
-    0px 10px 20px -5px rgba(0, 0, 0, 0.35),
-    0 0 40px -30px var(--tier-glow, hsl(40, 80%, 70%)),
-    0 0 50px -20px var(--tier-glow, hsl(40, 80%, 70%));
+    0 0 12px 2px var(--tier-glow),
+    0 12px 22px -6px hsla(30, 30%, 8%, 0.45),
+    0 30px 40px -24px hsla(30, 30%, 8%, 0.5),
+    0 0 50px -20px var(--tier-glow);
+}
+
+.post-card__rotator:focus-visible {
+  outline: 3px solid hsl(210, 90%, 55%);
+  outline-offset: 3px;
 }
 
 .post-card__rotator > * {
@@ -105,63 +141,101 @@
   overflow: hidden;
 }
 
-/* ── card front ── */
+/* ── the printed card: frame, body, paper ── */
 .post-card__front {
-  backface-visibility: hidden;
-  transform: translate3d(0, 0, 0.01px);
   position: relative;
-  background: var(--tier-bg, linear-gradient(135deg, #f5f0e0 0%, #e8dcc8 100%));
-  border: 3px solid var(--card-edge);
-  overflow: visible;
+  transform: translate3d(0, 0, 0.01px);
+  backface-visibility: hidden;
+  /* card stock grain over the printed frame */
+  background:
+    url("../../../assets/paper-grain.webp") 0 0 / 160px,
+    var(--frame-bg);
+  background-blend-mode: soft-light;
+  isolation: isolate;
+}
+
+.post-card__body {
+  position: absolute;
+  inset: var(--frame);
+  z-index: 0;
+  border-radius: var(--body-radius);
+  background: var(--tier-bg);
+  box-shadow:
+    inset 0 0 0 1px hsla(30, 40%, 20%, 0.18),
+    inset 0 1px 3px hsla(30, 40%, 15%, 0.3),
+    0 0 0 1px hsla(0, 0%, 100%, 0.35);
+}
+
+/* printed background motif (topo lines / nebula), faint at rest */
+.post-card__body::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--print-pattern) 0 0 / 130cqw auto repeat;
+  mix-blend-mode: soft-light;
+  opacity: var(--print-opacity);
+}
+
+.post-card__body::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: url("../../../assets/paper-grain.webp") 0 0 / 160px;
+  mix-blend-mode: soft-light;
+  opacity: 0.6;
 }
 
 /* ── card content ── */
 .post-card__content {
-  all: unset;
+  position: absolute;
+  inset: var(--frame);
+  z-index: 2;
   display: flex;
   flex-direction: column;
-  position: absolute;
-  inset: 0;
-  padding: 8%;
+  padding: 4.2cqw 4.6cqw 6cqw;
   box-sizing: border-box;
-  transform-style: preserve-3d;
+  color: var(--ink);
 }
 
 .post-card__header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4%;
+  margin-bottom: 2.2cqw;
   min-height: 24px;
 }
 
 .post-card__header-marker {
-  width: clamp(20px, 2.5vw, 32px);
+  width: max(20px, 9.5cqw);
   height: auto;
-  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+  filter: drop-shadow(0 1px 1.5px hsla(30, 40%, 10%, 0.35));
 }
 
 .post-card__days {
   display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: clamp(10px, 1.2vw, 14px);
+  align-items: baseline;
+  gap: 1.2cqw;
+  font-size: max(10px, 4.2cqw);
   font-weight: 700;
-  color: #333;
+  color: var(--ink);
 }
 
 .post-card__days-number {
-  font-size: clamp(16px, 2vw, 24px);
+  font-size: max(16px, 7.6cqw);
   font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.02em;
 }
 
 .post-card__title {
   font-weight: 700;
   font-style: italic;
-  font-size: clamp(11px, 1.4vw, 18px);
-  color: #1a1a1a;
-  margin-bottom: 4%;
-  line-height: 1.3;
+  font-size: max(11px, 5.6cqw);
+  color: var(--ink);
+  margin-bottom: 2.6cqw;
+  line-height: 1.25;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -175,127 +249,153 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
   min-height: 0;
-  overflow: visible;
-  transform: translateZ(2px);
+  /* lets the photo fit whatever height a long title leaves over */
+  container-type: size;
+}
+
+/* ── the photo: a torn print glued onto the card ── */
+.post-card__photo {
+  position: relative;
+  /* room below for the paper rim and its shadow */
+  width: min(100cqw, 100cqh - 5px);
+  aspect-ratio: 1;
+}
+
+.post-card__photo-shadow,
+.post-card__photo-rim,
+.post-card__photo-print {
+  position: absolute;
+  inset: 0;
+}
+
+.post-card__photo-shadow {
+  transform: translate(0.4cqw, 1.1cqw) scale(1.02);
+  filter: blur(2.5px);
+  opacity: 0.5;
+}
+
+.post-card__photo-shadow > div,
+.post-card__photo-rim,
+.post-card__photo-print {
+  -webkit-mask: var(--torn) center / cover no-repeat;
+  mask: var(--torn) center / cover no-repeat;
+}
+
+.post-card__photo-shadow > div {
+  position: absolute;
+  inset: 0;
+  background: hsl(28, 45%, 12%);
+}
+
+/* paper core showing along the torn edge */
+.post-card__photo-rim {
+  transform: scale(1.028);
+  background: linear-gradient(160deg, #fdfaf3 0%, #f1ead9 60%, #e7dcc6 100%);
+}
+
+.post-card__photo-print {
+  overflow: hidden;
 }
 
 .post-card__image {
+  display: block;
   width: 100%;
-  aspect-ratio: 1;
+  height: 100%;
   object-fit: cover;
-  border-radius: 8px;
-  mask-size: cover;
-  -webkit-mask-size: cover;
 }
 
-/* ── photo holo: light passing through the photo (luminance bump map) ──
-   The holographic gradient is modulated by the photo's own brightness via a
-   multiply pass (::before), then color-dodged onto the card so the result
-   reads as light emerging *through* the image rather than paint on top.
-   Gated on hover via --card-opacity so the card grid stays calm at rest. */
-.post-card__photo-holo {
+/* ── light raking across the photo ──
+   Mounted only while the card is active. Everything here blends onto the
+   photo itself (the print is masked, so it is its own isolated group). */
+.post-card__photo-fx,
+.post-card__photo-fx > *,
+.post-card__relief > * {
   position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 100%;
-  aspect-ratio: 1;
-  transform: translate(-50%, -50%) translateZ(2.2px);
+  inset: 0;
   pointer-events: none;
-  z-index: 4;
-  border-radius: 8px;
-  overflow: hidden;
-  /* isolate so the ::before multiply blends only with this layer's gradient,
-     not with the photo/card behind it */
-  isolation: isolate;
-  mask-size: cover;
-  -webkit-mask-size: cover;
+}
+
+/* Relief: the photo's luminance read as a height map. A grayscale copy plus
+   an inverted copy at 50% cancel out to flat gray; offsetting the inverted
+   copy against the light direction turns every edge into an emboss lit from
+   that side. The result is overlaid on the photo, so flat gray changes
+   nothing. */
+.post-card__relief {
+  clip-path: inset(3px);
+  filter: grayscale(1) blur(0.35px) contrast(3.2);
+  mix-blend-mode: overlay;
+  opacity: calc(var(--card-opacity) * var(--relief));
+}
+
+.post-card__relief > * {
+  background: var(--photo-url) center / cover no-repeat;
+}
+
+.post-card__relief > * + * {
+  filter: invert(1);
+  opacity: 0.5;
+  transform: translate(
+    calc(var(--light-x) * -1.6px),
+    calc(var(--light-y) * -1.6px)
+  );
+}
+
+/* Etched holo: rainbow bands + a light spot, gated by the photo's own
+   brightness so the foil only shows through the light parts of the print */
+.post-card__photo-holo {
   background-image:
-    repeating-linear-gradient(
-      100deg,
-      hsl(2, 100%, 73%) 0%,
-      hsl(53, 100%, 69%) 8%,
-      hsl(93, 100%, 69%) 16%,
-      hsl(176, 100%, 76%) 24%,
-      hsl(228, 100%, 74%) 32%,
-      hsl(283, 100%, 73%) 40%,
-      hsl(2, 100%, 73%) 48%
-    ),
     radial-gradient(
       farthest-corner circle at var(--pointer-x) var(--pointer-y),
       hsla(0, 0%, 100%, 0.9) 0%,
-      hsla(0, 0%, 100%, 0.2) 35%,
-      transparent 70%
+      hsla(0, 0%, 65%, 0.6) 25%,
+      hsl(0, 0%, 0%) 75%
+    ),
+    repeating-linear-gradient(
+      110deg,
+      var(--sunpillar-1) 0%,
+      var(--sunpillar-2) 5%,
+      var(--sunpillar-3) 10%,
+      var(--sunpillar-4) 15%,
+      var(--sunpillar-5) 20%,
+      var(--sunpillar-6) 25%,
+      var(--sunpillar-1) 30%
     );
+  background-blend-mode: multiply;
   background-size:
-    300% 300%,
-    cover;
+    cover,
+    220% 220%;
   background-position:
-    calc(var(--pointer-from-left) * 100%) calc(var(--pointer-from-top) * 100%),
-    center center;
-  filter: brightness(0.85) contrast(1.35) saturate(0.35);
+    center,
+    calc(((50% - var(--background-x)) * 2.6) + 50%)
+      calc(((50% - var(--background-y)) * 3.5) + 50%);
+  filter: brightness(0.65) contrast(1.5) saturate(1.5);
   mix-blend-mode: color-dodge;
-  opacity: calc(var(--card-opacity) * .75);
-  transition: opacity var(--return-duration) ease;
+  opacity: calc(var(--card-opacity) * var(--photo-holo));
 }
 
-.post-card__photo-holo::before {
+.post-card__photo-holo::after {
   content: "";
   position: absolute;
   inset: 0;
-  background-image: var(--photo-url);
-  background-size: cover;
-  background-position: center;
-  /* the photo darkens the gradient: bright photo areas keep the shine,
-     dark areas crush it to black (→ no light after color-dodge) */
+  background: var(--photo-url) center / cover no-repeat;
+  filter: grayscale(1) contrast(1.3) brightness(1.05);
   mix-blend-mode: multiply;
 }
 
-/* "dark passes light": invert the modulator so the shine emerges from the
-   dark regions instead — x-ray / developing-photo feel */
-.post-card[data-holo="dark"] .post-card__photo-holo::before {
-  filter: invert(1);
-}
-
+/* ── footer ── */
 .post-card__footer {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
   margin-top: auto;
-  padding-top: 4%;
-}
-
-.post-card__footer-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  width: 100%;
+  padding-top: 2.6cqw;
 }
 
 .post-card__footer-left {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-}
-
-.post-card__id {
-  position: absolute;
-  bottom: 1.5%;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: clamp(9px, 1vw, 12px);
-  font-weight: 700;
-  color: #666;
-  text-decoration: none;
-  pointer-events: auto;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-.post-card__id:hover {
-  color: #1a1a1a;
-  text-decoration: underline;
 }
 
 .post-card__footer-right {
@@ -305,15 +405,15 @@
 }
 
 .post-card__author-label {
-  font-size: clamp(9px, 1vw, 13px);
-  color: #555;
+  font-size: max(9px, 3.9cqw);
+  color: var(--ink-soft);
   font-style: italic;
 }
 
 .post-card__author {
-  font-size: clamp(11px, 1.3vw, 16px);
+  font-size: max(11px, 4.9cqw);
   font-weight: 700;
-  color: #1a1a1a;
+  color: var(--ink);
 }
 
 .post-card__author--link {
@@ -324,171 +424,250 @@
 }
 
 .post-card__author--link:hover {
-  color: #555;
+  color: var(--ink-soft);
   text-decoration: underline;
 }
 
-/* ── shine layer (holographic) ── */
-.post-card__shine {
-  display: grid;
-  transform: translateZ(1px);
+.post-card__id {
+  position: absolute;
+  bottom: 1.6cqw;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: max(9px, 3.6cqw);
+  font-weight: 700;
+  color: var(--ink-soft);
+  text-decoration: none;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.post-card__id:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+/* ── body foil (reverse holo) ──
+   Lies between the card stock and the print: the photo and the text sit on
+   top of it, so only the frame and the background shine. The container must
+   not become a stacking context (no z-index/opacity/filter), so each layer
+   blends straight onto the stock. */
+.post-card__foil {
+  position: absolute;
+  inset: var(--foil-inset);
+  border-radius: var(--foil-radius);
   overflow: hidden;
-  z-index: 3;
+  pointer-events: none;
+}
+
+.post-card__foil > * {
+  position: absolute;
+  inset: 0;
+}
+
+/* metallic sheen: a bright band with darker metal either side, sweeping
+   against the light like a brushed plate */
+.post-card__foil-sheen {
   background-image:
-    repeating-linear-gradient(
-      82deg,
-      hsl(53, 65%, 60%) 4%,
-      hsl(93, 56%, 50%) 8%,
-      hsl(176, 54%, 49%) 12%,
-      hsl(228, 59%, 55%) 16%,
-      hsl(283, 60%, 55%) 20%,
-      hsl(326, 59%, 51%) 24%,
-      hsl(326, 59%, 51%) 28%,
-      hsl(283, 60%, 55%) 32%,
-      hsl(228, 59%, 55%) 36%,
-      hsl(176, 54%, 49%) 40%,
-      hsl(93, 56%, 50%) 44%,
-      hsl(53, 65%, 60%) 48%
-    ),
     radial-gradient(
       farthest-corner circle at var(--pointer-x) var(--pointer-y),
-      hsla(180, 100%, 89%, 0.5) 5%,
-      hsla(180, 14%, 57%, 0.3) 40%,
-      hsl(0, 0%, 0%) 130%
+      var(--foil-sheen) 0%,
+      transparent 45%
+    ),
+    linear-gradient(
+      115deg,
+      hsla(0, 0%, 0%, 0.35) 15%,
+      var(--foil-sheen) 40%,
+      hsla(0, 0%, 100%, 0.9) 46%,
+      var(--foil-sheen) 52%,
+      hsla(0, 0%, 0%, 0.35) 78%
+    );
+  background-size:
+    cover,
+    280% 280%;
+  background-position:
+    center,
+    calc(100% - var(--pointer-from-left) * 100%)
+      calc(100% - var(--pointer-from-top) * 100%);
+  mix-blend-mode: overlay;
+  opacity: calc(var(--card-opacity) * var(--foil-sheen-strength));
+}
+
+/* the printed motif catching rainbow light */
+.post-card__foil-pattern {
+  -webkit-mask: url("../../../assets/foil-topo.webp") 0 0 / 130cqw auto repeat;
+  mask: url("../../../assets/foil-topo.webp") 0 0 / 130cqw auto repeat;
+  background-image:
+    radial-gradient(
+      farthest-corner circle at var(--pointer-x) var(--pointer-y),
+      hsl(0, 0%, 100%) 0%,
+      hsl(0, 0%, 70%) 25%,
+      hsl(0, 0%, 25%) 70%
+    ),
+    repeating-linear-gradient(
+      -35deg,
+      var(--sunpillar-1) 0%,
+      var(--sunpillar-2) 4%,
+      var(--sunpillar-3) 8%,
+      var(--sunpillar-4) 12%,
+      var(--sunpillar-5) 16%,
+      var(--sunpillar-6) 20%,
+      var(--sunpillar-1) 24%
     );
   background-blend-mode: multiply;
-  background-position:
-    calc(10% + var(--pointer-from-left) * 80%)
-      calc(10% + var(--pointer-from-top) * 80%),
-    center center;
   background-size:
-    400% 900%,
-    cover;
-  filter: brightness(0.7) contrast(1.5) saturate(0.4);
+    cover,
+    300% 300%;
+  background-position:
+    center,
+    calc(var(--pointer-from-left) * 100%) calc(var(--pointer-from-top) * 100%);
+  filter: brightness(0.95) contrast(1.5) saturate(1.3);
   mix-blend-mode: color-dodge;
-  opacity: calc(var(--card-opacity) * 0.6);
-  transition: opacity var(--return-duration) ease;
+  opacity: calc(var(--card-opacity) * var(--foil-pattern));
 }
 
-.post-card__shine::before {
+/* Glitter. Every flake in the texture has a random facet angle (its gray
+   value). ::after is the dim base glitter, tinted by a moving rainbow.
+   ::before is the twinkle: a sweeping black/white ramp is differenced
+   against the angles and thresholded, so a flake flashes only while the
+   ramp matches its angle, i.e. at its own tilt. The whole layer is masked
+   by the light falloff so it glitters around the reflection. */
+.post-card__foil-flakes {
+  -webkit-mask-image: radial-gradient(
+    farthest-corner circle at var(--pointer-x) var(--pointer-y),
+    #000 0%,
+    hsla(0, 0%, 0%, 0.6) 35%,
+    hsla(0, 0%, 0%, 0.15) 90%
+  );
+  mask-image: radial-gradient(
+    farthest-corner circle at var(--pointer-x) var(--pointer-y),
+    #000 0%,
+    hsla(0, 0%, 0%, 0.6) 35%,
+    hsla(0, 0%, 0%, 0.15) 90%
+  );
+  mix-blend-mode: color-dodge;
+  opacity: calc(var(--card-opacity) * var(--foil-flakes));
+}
+
+.post-card__foil-flakes::before,
+.post-card__foil-flakes::after {
   content: "";
-  grid-area: 1 / 1;
-  border-radius: var(--card-radius);
-  transform: translateZ(1px);
-  z-index: 2;
-  background-image:
-    repeating-linear-gradient(
-      0deg,
-      hsla(0, 0%, 100%, 0) 0%,
-      hsla(0, 0%, 100%, 0) 4.5%,
-      hsla(0, 0%, 100%, 0.12) 4.65%,
-      hsla(0, 0%, 100%, 0) 4.8%
-    ),
-    repeating-linear-gradient(
-      133deg,
-      hsl(2, 100%, 73%) 0%,
-      hsl(53, 100%, 69%) 3.8%,
-      hsl(93, 100%, 69%) 7.6%,
-      hsl(176, 100%, 76%) 11.4%,
-      hsl(228, 100%, 74%) 15.2%,
-      hsl(283, 100%, 73%) 19%,
-      hsl(2, 100%, 73%) 22.8%
-    ),
-    radial-gradient(
-      farthest-corner circle at var(--pointer-x) var(--pointer-y),
-      hsla(0, 0%, 0%, 0.1) 12%,
-      hsla(0, 0%, 0%, 0.15) 20%,
-      hsla(0, 0%, 0%, 0.25) 120%
-    );
-  background-blend-mode: hard-light, hard-light;
-  background-position:
-    center center,
-    0% var(--background-y),
-    center center;
-  background-size:
-    60% 160%,
-    200% 400%,
-    cover;
-  filter: brightness(0.8) contrast(1.2) saturate(0.6);
-  mix-blend-mode: soft-light;
+  position: absolute;
+  inset: 0;
+  -webkit-mask: url("../../../assets/foil-sparkle.webp") 0 0 / 192px repeat;
+  mask: url("../../../assets/foil-sparkle.webp") 0 0 / 192px repeat;
 }
 
-.post-card__shine::after {
-  content: "";
-  grid-area: 1 / 1;
-  border-radius: var(--card-radius);
-  transform: translateZ(1.2px);
-  z-index: 3;
+.post-card__foil-flakes::before {
   background-image:
-    repeating-linear-gradient(
-      133deg,
-      hsl(283, 100%, 73%) 0%,
-      hsl(2, 100%, 73%) 3.8%,
-      hsl(53, 100%, 69%) 7.6%,
-      hsl(93, 100%, 69%) 11.4%,
-      hsl(176, 100%, 76%) 15.2%,
-      hsl(228, 100%, 74%) 19%,
-      hsl(283, 100%, 73%) 22.8%
-    ),
-    radial-gradient(
-      farthest-corner circle at var(--pointer-x) var(--pointer-y),
-      hsla(0, 0%, 0%, 0.1) 12%,
-      hsla(0, 0%, 0%, 0.15) 20%,
-      hsla(0, 0%, 0%, 0.25) 120%
-    );
-  background-blend-mode: hard-light;
-  background-position:
-    0% var(--background-y),
-    center center;
+    url("../../../assets/foil-sparkle.webp"),
+    repeating-linear-gradient(55deg, #000 0, #fff 9cqw, #000 18cqw);
   background-size:
-    200% 400%,
-    cover;
-  filter: brightness(0.9) contrast(1) saturate(0.6);
-  mix-blend-mode: soft-light;
+    192px,
+    200% 200%;
+  background-position:
+    0 0,
+    calc(var(--pointer-from-left) * 100%) calc(var(--pointer-from-top) * 100%);
+  background-blend-mode: difference;
+  /* keep only |angle - ramp| < 0.2: invert, then brightness × contrast
+     remaps [0.8, 1] → [0, 1] */
+  filter: invert(1) brightness(0.556) contrast(9) var(--flake-tint);
 }
 
-/* ── glare layer ── */
+.post-card__foil-flakes::after {
+  background-image:
+    url("../../../assets/foil-sparkle.webp"),
+    repeating-linear-gradient(
+      -30deg,
+      var(--sunpillar-1) 0%,
+      var(--sunpillar-2) 5%,
+      var(--sunpillar-3) 10%,
+      var(--sunpillar-4) 15%,
+      var(--sunpillar-5) 20%,
+      var(--sunpillar-6) 25%,
+      var(--sunpillar-1) 30%
+    );
+  background-size:
+    192px,
+    300% 300%;
+  background-position:
+    0 0,
+    calc(100% - var(--pointer-from-left) * 100%)
+      calc(100% - var(--pointer-from-top) * 100%);
+  background-blend-mode: multiply;
+  /* kept dim so color-dodge tints the stock instead of clipping to white */
+  filter: brightness(0.55) var(--flake-glitter-tint);
+}
+
+/* ── glare: the gloss of the card surface ── */
 .post-card__glare {
   transform: translateZ(1.41px);
-  overflow: hidden;
   background-image: radial-gradient(
     farthest-corner circle at var(--pointer-x) var(--pointer-y),
-    hsla(0, 0%, 100%, 0.5) 10%,
-    hsla(0, 0%, 100%, 0.35) 20%,
-    hsla(0, 0%, 0%, 0.3) 90%
+    hsla(0, 0%, 100%, 0.8) 10%,
+    hsla(0, 0%, 100%, 0.65) 20%,
+    hsla(0, 0%, 0%, 0.5) 90%
   );
-  opacity: calc(var(--card-opacity) * 0.5);
+  opacity: calc(var(--card-opacity) * var(--glare));
   mix-blend-mode: overlay;
-  transition: opacity var(--return-duration) ease;
 }
 
 /* ── tier themes ── */
 
-/* tier 0: basic, cheap, simple (< 6 months) */
-.post-card[data-tier="0"] {
-  --tier-bg: linear-gradient(135deg, #faf6ee 0%, #f0e8d8 100%);
-  --tier-glow: hsl(40, 30%, 70%);
+/* tier 0: common (< 6 months) — plain stock, gloss only */
+.post-card[data-tier="0"] .post-card__photo-fx,
+.post-card[data-tier="0"] .post-card__foil {
+  display: none;
 }
 
-/* tier 1: bronze (6m–1y) */
+/* tier 1: bronze (6m–1y) — metallic stock, contour lines catch the light */
 .post-card[data-tier="1"] {
   --tier-bg: linear-gradient(135deg, #e8c8a0 0%, #c49264 50%, #a87040 100%);
   --tier-glow: hsl(25, 55%, 55%);
+  --print-pattern: url("../../../assets/foil-topo.webp");
+  --print-opacity: 0.35;
+  --foil-sheen: hsla(32, 90%, 78%, 0.9);
+  --foil-sheen-strength: 0.8;
+  --foil-pattern: 0.45;
+  --relief: 0.7;
+  --glare: 0.65;
 }
 
-/* tier 2: silver (1–2y) */
+/* tier 2: silver (1–2y) — reverse holo, holo light on the photo */
 .post-card[data-tier="2"] {
   --tier-bg: linear-gradient(135deg, #d8dce6 0%, #a8b0bc 50%, #8a929e 100%);
   --tier-glow: hsl(220, 15%, 70%);
+  --print-pattern: url("../../../assets/foil-topo.webp");
+  --print-opacity: 0.4;
+  --foil-sheen: hsla(210, 40%, 92%, 0.9);
+  --foil-sheen-strength: 0.8;
+  --foil-pattern: 0.85;
+  --foil-flakes: 0.35;
+  --relief: 0.8;
+  --photo-holo: 0.45;
+  --glare: 0.7;
 }
 
-/* tier 3: gold (2–5y) */
+/* tier 3: gold (2–5y) — gold glitter stock */
 .post-card[data-tier="3"] {
   --tier-bg: linear-gradient(135deg, #f5e6b8 0%, #d4a843 50%, #c49530 100%);
   --tier-glow: hsl(43, 85%, 55%);
+  --print-pattern: url("../../../assets/foil-topo.webp");
+  --print-opacity: 0.35;
+  --foil-sheen: hsla(45, 100%, 80%, 0.9);
+  --foil-sheen-strength: 0.75;
+  --foil-pattern: 0.45;
+  --foil-flakes: 0.75;
+  --foil-inset: 0;
+  --foil-radius: 0;
+  --flake-tint: sepia(1) saturate(2.5) brightness(1.1);
+  --flake-glitter-tint: sepia(1) saturate(3) hue-rotate(-8deg);
+  --relief: 0.9;
+  --photo-holo: 0.55;
+  --glare: 0.75;
 }
 
-/* tier 4: epic purple (5y+) */
+/* tier 4: epic (5y+) — cosmic glitter over a nebula print */
 .post-card[data-tier="4"] {
   --tier-bg: linear-gradient(
     135deg,
@@ -498,269 +677,51 @@
     #b080c8 100%
   );
   --tier-glow: hsl(280, 60%, 70%);
+  --print-pattern: url("../../../assets/foil-nebula.webp");
+  --print-opacity: 0.45;
+  --foil-sheen: hsla(290, 80%, 88%, 0.9);
+  --foil-sheen-strength: 0.7;
+  --foil-pattern: 0.9;
+  --foil-flakes: 1;
+  --foil-inset: 0;
+  --foil-radius: 0;
+  --relief: 1;
+  --photo-holo: 0.85;
+  --glare: 0.8;
 }
 
-/* ── tier 1 holo: bronze shimmer ── */
-.post-card[data-tier="1"] .post-card__shine {
+/* nebula clouds take the rainbow instead of contour lines */
+.post-card[data-tier="4"] .post-card__foil-pattern {
+  -webkit-mask: none;
+  mask: none;
   background-image:
-    repeating-linear-gradient(
-      110deg,
-      hsl(30, 40%, 55%) 0%,
-      hsl(40, 45%, 65%) 8%,
-      hsl(25, 35%, 50%) 16%,
-      hsl(35, 40%, 60%) 24%,
-      hsl(20, 30%, 45%) 32%,
-      hsl(30, 40%, 55%) 40%
-    ),
+    url("../../../assets/foil-nebula.webp"),
     radial-gradient(
       farthest-corner circle at var(--pointer-x) var(--pointer-y),
-      hsla(35, 50%, 70%, 0.5) 5%,
-      hsla(25, 25%, 40%, 0.3) 40%,
-      hsl(0, 0%, 0%) 130%
+      hsl(0, 0%, 100%) 0%,
+      hsl(0, 0%, 50%) 30%,
+      hsl(0, 0%, 10%) 80%
+    ),
+    repeating-linear-gradient(
+      -35deg,
+      var(--sunpillar-1) 0%,
+      var(--sunpillar-2) 4%,
+      var(--sunpillar-3) 8%,
+      var(--sunpillar-4) 12%,
+      var(--sunpillar-5) 16%,
+      var(--sunpillar-6) 20%,
+      var(--sunpillar-1) 24%
     );
-  background-blend-mode: multiply;
+  background-blend-mode: multiply, multiply;
   background-size:
-    300% 600%,
-    cover;
-  background-position:
-    calc(10% + var(--pointer-from-left) * 80%)
-      calc(10% + var(--pointer-from-top) * 80%),
-    center center;
-  filter: brightness(0.75) contrast(1.4) saturate(0.35);
-}
-
-/* ── tier 2 holo: silver metallic ── */
-.post-card[data-tier="2"] .post-card__shine {
-  background-image:
-    repeating-linear-gradient(
-      100deg,
-      hsl(210, 20%, 70%) 0%,
-      hsl(200, 25%, 78%) 6%,
-      hsl(220, 15%, 60%) 12%,
-      hsl(240, 20%, 72%) 18%,
-      hsl(190, 20%, 65%) 24%,
-      hsl(210, 20%, 70%) 30%
-    ),
-    radial-gradient(
-      farthest-corner circle at var(--pointer-x) var(--pointer-y),
-      hsla(210, 40%, 85%, 0.5) 5%,
-      hsla(220, 15%, 50%, 0.3) 40%,
-      hsl(0, 0%, 0%) 130%
-    );
-  background-blend-mode: multiply;
-  background-size:
-    350% 700%,
-    cover;
-  background-position:
-    calc(10% + var(--pointer-from-left) * 80%)
-      calc(10% + var(--pointer-from-top) * 80%),
-    center center;
-  filter: brightness(0.8) contrast(1.5) saturate(0.3);
-}
-
-/* ── tier 3 holo: golden foil ── */
-.post-card[data-tier="3"] .post-card__shine {
-  background-image:
-    repeating-linear-gradient(
-      82deg,
-      hsl(43, 50%, 55%) 0%,
-      hsl(53, 55%, 65%) 6%,
-      hsl(38, 45%, 50%) 12%,
-      hsl(48, 50%, 60%) 18%,
-      hsl(33, 40%, 45%) 24%,
-      hsl(43, 50%, 55%) 30%
-    ),
-    repeating-linear-gradient(
-      160deg,
-      hsla(43, 60%, 70%, 0) 0%,
-      hsla(43, 60%, 70%, 0.06) 4%,
-      hsla(43, 60%, 70%, 0) 8%
-    ),
-    radial-gradient(
-      farthest-corner circle at var(--pointer-x) var(--pointer-y),
-      hsla(45, 60%, 80%, 0.5) 5%,
-      hsla(40, 30%, 45%, 0.3) 40%,
-      hsl(0, 0%, 0%) 130%
-    );
-  background-blend-mode: multiply, overlay;
-  background-size:
-    400% 800%,
-    50% 120%,
-    cover;
-  background-position:
-    calc(10% + var(--pointer-from-left) * 80%)
-      calc(10% + var(--pointer-from-top) * 80%),
-    center center,
-    center center;
-  filter: brightness(0.8) contrast(1.5) saturate(0.35);
-}
-
-.post-card[data-tier="3"] .post-card__shine::before {
-  background-image:
-    repeating-linear-gradient(
-      133deg,
-      hsl(43, 55%, 65%) 0%,
-      hsl(53, 60%, 72%) 3.8%,
-      hsl(38, 50%, 55%) 7.6%,
-      hsl(48, 55%, 68%) 11.4%,
-      hsl(33, 45%, 50%) 15.2%,
-      hsl(43, 55%, 65%) 19%
-    ),
-    radial-gradient(
-      farthest-corner circle at var(--pointer-x) var(--pointer-y),
-      hsla(0, 0%, 0%, 0.1) 12%,
-      hsla(0, 0%, 0%, 0.15) 20%,
-      hsla(0, 0%, 0%, 0.25) 120%
-    );
-  background-blend-mode: hard-light;
-  background-size:
-    200% 400%,
-    cover;
-  background-position:
-    0% var(--background-y),
-    center center;
-  filter: brightness(0.85) contrast(1.3) saturate(0.4);
-}
-
-/* ── tier 4 holo: rainbow cosmos ── */
-.post-card[data-tier="4"] .post-card__shine {
-  background-image:
-    repeating-linear-gradient(
-      82deg,
-      hsl(2, 65%, 73%) 0%,
-      hsl(53, 65%, 69%) 5%,
-      hsl(93, 60%, 69%) 10%,
-      hsl(176, 60%, 76%) 15%,
-      hsl(228, 65%, 74%) 20%,
-      hsl(283, 60%, 73%) 25%,
-      hsl(2, 65%, 73%) 30%
-    ),
-    repeating-linear-gradient(
-      160deg,
-      hsla(0, 0%, 100%, 0) 0%,
-      hsla(0, 0%, 100%, 0.07) 3.5%,
-      hsla(0, 0%, 100%, 0) 7%
-    ),
-    radial-gradient(
-      farthest-corner circle at var(--pointer-x) var(--pointer-y),
-      hsla(280, 60%, 90%, 0.5) 5%,
-      hsla(280, 25%, 50%, 0.3) 40%,
-      hsl(0, 0%, 0%) 130%
-    );
-  background-blend-mode: multiply, overlay;
-  background-size:
-    500% 1000%,
-    50% 120%,
-    cover;
-  background-position:
-    calc(10% + var(--pointer-from-left) * 80%)
-      calc(10% + var(--pointer-from-top) * 80%),
-    center center,
-    center center;
-  filter: brightness(0.75) contrast(1.6) saturate(0.45);
-  opacity: calc(var(--card-opacity) * 0.75);
-}
-
-.post-card[data-tier="4"] .post-card__shine::before {
-  background-image:
-    repeating-linear-gradient(
-      133deg,
-      hsl(283, 60%, 73%) 0%,
-      hsl(2, 65%, 73%) 3.8%,
-      hsl(53, 60%, 69%) 7.6%,
-      hsl(93, 55%, 69%) 11.4%,
-      hsl(176, 55%, 76%) 15.2%,
-      hsl(228, 60%, 74%) 19%,
-      hsl(283, 60%, 73%) 22.8%
-    ),
-    radial-gradient(
-      farthest-corner circle at var(--pointer-x) var(--pointer-y),
-      hsla(0, 0%, 0%, 0.05) 12%,
-      hsla(0, 0%, 0%, 0.12) 20%,
-      hsla(0, 0%, 0%, 0.25) 120%
-    );
-  background-blend-mode: hard-light;
-  background-size:
-    200% 400%,
-    cover;
-  background-position:
-    0% var(--background-y),
-    center center;
-  filter: brightness(0.85) contrast(1.3) saturate(0.5);
-}
-
-.post-card[data-tier="4"] .post-card__shine::after {
-  background-image:
-    repeating-linear-gradient(
-      45deg,
-      hsl(53, 60%, 69%) 0%,
-      hsl(176, 55%, 76%) 5%,
-      hsl(283, 60%, 73%) 10%,
-      hsl(2, 65%, 73%) 15%,
-      hsl(53, 60%, 69%) 20%
-    ),
-    radial-gradient(
-      farthest-corner circle at var(--pointer-x) var(--pointer-y),
-      hsla(0, 0%, 0%, 0.1) 12%,
-      hsla(0, 0%, 0%, 0.15) 20%,
-      hsla(0, 0%, 0%, 0.25) 120%
-    );
-  background-blend-mode: hard-light;
-  background-size:
-    200% 400%,
-    cover;
-  background-position:
-    0% var(--background-y),
-    center center;
-  filter: brightness(0.9) contrast(1.1) saturate(0.45);
-}
-
-/* ── sparkle overlay for tiers 1-4 ── */
-.post-card[data-tier="1"] .post-card__glare,
-.post-card[data-tier="2"] .post-card__glare,
-.post-card[data-tier="3"] .post-card__glare,
-.post-card[data-tier="4"] .post-card__glare {
-  background-image:
-    /* subtle static glitter */
-    var(--glitter),
-    /* base glare gradient */
-    radial-gradient(
-        farthest-corner circle at var(--pointer-x) var(--pointer-y),
-        hsla(0, 0%, 100%, 0.4) 10%,
-        hsla(0, 0%, 100%, 0.15) 30%,
-        hsla(0, 0%, 0%, 0.2) 80%
-      );
-  background-blend-mode: overlay, overlay;
-  background-size: 250px, cover;
+    130cqw auto,
+    cover,
+    300% 300%;
   background-position:
     0 0,
-    center center;
-  /* very subtle: only visible at edges */
-  filter: brightness(calc(0.3 + var(--pointer-from-center) * 0.8))
-    contrast(calc(1.5 + var(--pointer-from-center) * 1.5)) saturate(0);
-  /* mask: circular glitter from card center */
-  -webkit-mask-image: radial-gradient(
-    circle at center,
-    black 0%,
-    black 50%,
-    transparent 85%
-  );
-  mask-image: radial-gradient(
-    circle at center,
-    black 0%,
-    black 50%,
-    transparent 85%
-  );
+    center,
+    calc(var(--pointer-from-left) * 100%) calc(var(--pointer-from-top) * 100%);
 }
-
-/* slightly stronger sparkle for tier 3-4 */
-.post-card[data-tier="3"] .post-card__glare,
-.post-card[data-tier="4"] .post-card__glare {
-  opacity: calc(var(--card-opacity) * 0.7);
-  filter: brightness(calc(0.4 + var(--pointer-from-center) * 1))
-    contrast(calc(1.5 + var(--pointer-from-center) * 2)) saturate(0);
-}
-
 
 /* ── vintage postal stamp ── */
 .post-card__stamp {
