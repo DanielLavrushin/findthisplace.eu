@@ -88,9 +88,6 @@ export default function YearLeaders({
 }: Readonly<YearLeadersProps>) {
   if (!loading && years.length === 0) return null;
 
-  // the bars measure each year against the busiest
-  const max = Math.max(0, ...years.map((y) => y.count));
-
   return (
     <Paper
       elevation={0}
@@ -148,14 +145,15 @@ export default function YearLeaders({
                   <DetailsTooltip
                     title={<Breakdown segments={parts} note={note(y)} />}
                   >
-                    {/* the bars line up into a chart of the years, each labelled at its end */}
+                    {/* across the whole cell, as on the boards: what the year was made of,
+                        with how much of it in a slot of its own, so the bars all line up */}
                     <Box sx={{ display: "flex", alignItems: "center", gap: 0.75, minWidth: 0 }}>
                       <Box
                         sx={{
-                          flex: `0 0 calc((100% - 3.5em) * ${max ? y.count / max : 1})`,
-                          // a quiet year still shows each of its parts, clear of the label
+                          flex: 1,
+                          // each part still shows in a narrow cell, clear of the number
                           minWidth: "min-content",
-                          // the bar's own top margin, which would lower it off the label's line
+                          // the bar's own top margin, which would lower it off the number's line
                           mt: -0.5,
                         }}
                       >
@@ -163,6 +161,9 @@ export default function YearLeaders({
                       </Box>
                       <Typography
                         sx={{
+                          // "1 632" with room to spare
+                          minWidth: "3.6em",
+                          textAlign: "right",
                           fontSize: "0.8rem",
                           fontWeight: 700,
                           fontVariantNumeric: "tabular-nums",

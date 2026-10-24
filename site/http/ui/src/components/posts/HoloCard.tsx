@@ -46,6 +46,8 @@ export default function HoloCard({
   }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Enter on a link inside the card (an author, the stamp) follows the link
+    if (e.target !== e.currentTarget) return;
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       onActivate();

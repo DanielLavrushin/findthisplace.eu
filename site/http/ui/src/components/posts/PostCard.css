@@ -824,6 +824,35 @@
   );
 }
 
+/* the stamp opens its country's page: under the pointer it straightens and
+   lifts off the photo a little, like a stamp starting to peel. rotate and
+   scale stack on the transform that follows the light, without fighting it */
+.post-card__stamp--link {
+  pointer-events: auto;
+  cursor: pointer;
+  rotate: 0deg;
+  scale: 1;
+  transition:
+    rotate 0.25s ease,
+    scale 0.25s ease,
+    filter 0.25s ease;
+}
+
+.post-card__stamp--link:hover,
+.post-card__stamp--link:focus-visible {
+  rotate: -6deg;
+  scale: 1.1;
+  filter: drop-shadow(
+    calc(3px - var(--light-x) * 2.5px) calc(7px - var(--light-y) * 2.5px)
+      9px hsla(28, 45%, 10%, 0.5)
+  );
+}
+
+.post-card__stamp--link:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
 .post-card__stamp-inner {
   width: 100%;
   height: 100%;

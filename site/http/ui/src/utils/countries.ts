@@ -14,6 +14,19 @@ export function countryCodeToFlag(code: string): string {
   return String.fromCodePoint(...codePoints);
 }
 
+/**
+ * The country's page under /tags, slugged as the server slugs its tag
+ * (tagSlug in handler/tags.go): "Czech Republic" → "czech-republic".
+ */
+export function countrySlug(code: string): string | undefined {
+  const name = countries[code.toUpperCase()];
+  return name
+    ?.toLowerCase()
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter(Boolean)
+    .join("-");
+}
+
 export function getCountryName(code: string): string {
   if (!code) return "Unknown";
   return countries[code.toUpperCase()] || code.toUpperCase();

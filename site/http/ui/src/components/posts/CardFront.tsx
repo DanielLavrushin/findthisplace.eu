@@ -9,6 +9,7 @@ import {
   tierMarkers,
   tornMask,
 } from "./cardUtils";
+import { countrySlug } from "../../utils/countries";
 
 interface Props {
   post: NotFoundPost;
@@ -27,6 +28,38 @@ export default function CardFront({
     ? daysBetween(post.created_date, foundAt)
     : null;
   const marker = tierMarkers[post.tier] ?? tierMarkers[0];
+  const place = post.country_code ? countryName(post.country_code) : "";
+  const placeSlug = post.country_code ? countrySlug(post.country_code) : undefined;
+
+  const stamp = post.country_code && (
+    <div className="post-card__stamp-inner">
+      <div className="post-card__stamp-window">
+        {/* the flag sits a little below the surface film */}
+        <div className="post-card__stamp-depth">
+          <div
+            className="post-card__stamp-flag"
+            role="img"
+            aria-label={post.country_code.toUpperCase()}
+          />
+          {active && (
+            <div className="post-card__stamp-foil" aria-hidden="true">
+              <div className="post-card__stamp-relief">
+                <div />
+                <div />
+              </div>
+              <div className="post-card__stamp-spectrum" />
+            </div>
+          )}
+        </div>
+        {active && <div className="post-card__stamp-gloss" />}
+      </div>
+    </div>
+  );
+  const stampStyle = post.country_code
+    ? ({
+        "--flag-url": `url(${JSON.stringify(flagUrl(post.country_code))})`,
+      } as React.CSSProperties)
+    : undefined;
 
   return (
     <div className="post-card__front">
@@ -94,46 +127,25 @@ export default function CardFront({
             )}
             {post.is_found && post.country_code && (
               <>
-                <div
-                  className="post-card__stamp"
-                  style={
-                    {
-                      "--flag-url": `url(${JSON.stringify(flagUrl(post.country_code))})`,
-                    } as React.CSSProperties
-                  }
-                >
-                  <div className="post-card__stamp-inner">
-                    <div className="post-card__stamp-window">
-                      {/* the flag sits a little below the surface film */}
-                      <div className="post-card__stamp-depth">
-                        <div
-                          className="post-card__stamp-flag"
-                          role="img"
-                          aria-label={post.country_code.toUpperCase()}
-                        />
-                        {active && (
-                          <div
-                            className="post-card__stamp-foil"
-                            aria-hidden="true"
-                          >
-                            <div className="post-card__stamp-relief">
-                              <div />
-                              <div />
-                            </div>
-                            <div className="post-card__stamp-spectrum" />
-                          </div>
-                        )}
-                      </div>
-                      {active && <div className="post-card__stamp-gloss" />}
-                    </div>
+                {/* the stamp is the way to every place in its country */}
+                {placeSlug ? (
+                  <Link
+                    className="post-card__stamp post-card__stamp--link"
+                    to={`/tags/${placeSlug}`}
+                    style={stampStyle}
+                    title={`Все места: ${place}`}
+                    aria-label={`Все места: ${place}`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {stamp}
+                  </Link>
+                ) : (
+                  <div className="post-card__stamp" style={stampStyle}>
+                    {stamp}
                   </div>
-                </div>
+                )}
                 {foundAt && (
-                  <Postmark
-                    date={foundAt}
-                    place={countryName(post.country_code)}
-                    seed={post.id}
-                  />
+                  <Postmark date={foundAt} place={place} seed={post.id} />
                 )}
               </>
             )}
