@@ -12,8 +12,8 @@ import { formatDuration } from "../../utils/formatDuration";
 // the colours of the tier pins on the map; silver and gold a shade deeper,
 // or they would vanish against the white card
 const tierColors = [COUNT_COLOR, "#c87830", "#b4bfcc", "#e8a400", "#c0187e"];
-// the cards' tier names, but "новое" agrees with "место", not the card
-const tierLabels = ["новое", "бронза", "серебро", "золото", "эпик"];
+// the cards' metals; finds below them are just the usual ones
+const tierLabels = ["обычные", "бронза", "серебро", "золото", "эпик"];
 const tierWaits = [
   "меньше полугода",
   "от полугода до года",
@@ -25,6 +25,7 @@ const tierWaits = [
 const tiers: LegendItem[] = tierLabels.map((label, t) => ({
   label,
   color: tierColors[t],
+  dotted: t === 0,
   hint: `загадка ждала сыщика ${tierWaits[t]}`,
 }));
 
@@ -42,8 +43,6 @@ export default function TopSearchers() {
   const { data: searchers = [], isPending } = useSearchers(10);
 
   if (!isPending && searchers.length === 0) return null;
-
-  const max = Math.max(0, ...searchers.map((s) => s.found_tiers_total));
 
   return (
     <LeaderboardCard
@@ -67,7 +66,6 @@ export default function TopSearchers() {
             avatar={<UserAvatar src={s.avatar_url} login={s.login} />}
             name={s.login}
             value={s.found_tiers_total}
-            max={max}
             segments={segments}
             details={
               <Breakdown

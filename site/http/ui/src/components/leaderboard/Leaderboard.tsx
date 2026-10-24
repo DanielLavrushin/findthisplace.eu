@@ -39,6 +39,8 @@ const medals = [
 export interface LegendItem {
   label: string;
   color: string;
+  /** the plain bulk: drawn as dots, so it recedes behind the coloured parts */
+  dotted?: boolean;
   /** what the colour stands for, on hover */
   hint?: string;
 }
@@ -47,17 +49,27 @@ export interface Segment extends LegendItem {
   value: number;
 }
 
-function Swatch({ color }: Readonly<{ color: string }>) {
+// dots run like a route on a map; every whole dot, none cut at the end
+function fill({ color, dotted }: LegendItem) {
+  return dotted
+    ? {
+        backgroundImage: `radial-gradient(circle, ${color} 1.5px, transparent 2px)`,
+        backgroundSize: "6px 100%",
+        backgroundRepeat: "space no-repeat",
+      }
+    : { bgcolor: color, borderRadius: "3px" };
+}
+
+function Swatch({ item }: Readonly<{ item: LegendItem }>) {
   return (
     <Box
       component="span"
       sx={{
         display: "inline-block",
-        width: 8,
-        height: 8,
-        borderRadius: "2px",
-        bgcolor: color,
+        width: 12,
+        height: 5,
         flexShrink: 0,
+        ...fill(item),
       }}
     />
   );
@@ -84,7 +96,7 @@ function Rank({ rank }: Readonly<{ rank: number }>) {
   );
 }
 
-/** Bar as long as the value against the leader's, split into its segments. */
+/** The value split into its segments, across `share` of the row. */
 function Bar({
   segments,
   share,
@@ -101,15 +113,14 @@ function Bar({
         mt: 0.5,
       }}
     >
-      {shown.map((s, i) => (
+      {shown.map((s) => (
         <Box
           key={s.label}
           sx={{
             flex: `${s.value} 1 0px`,
             // so a single find still shows
-            minWidth: 2,
-            bgcolor: s.color,
-            borderRadius: i === shown.length - 1 ? "0 3px 3px 0" : 0,
+            minWidth: s.dotted ? 6 : 2,
+            ...fill(s),
           }}
         />
       ))}
@@ -138,7 +149,7 @@ export function Breakdown({
             .map((s) => (
               <tr key={s.label}>
                 <td>
-                  <Swatch color={s.color} />
+                  <Swatch item={s} />
                 </td>
                 <td>{s.label}</td>
                 <Box
@@ -199,8 +210,11 @@ interface LeaderboardRowProps {
   avatar: ReactNode;
   name: string;
   value: number;
-  /** the leader's value, which fills the bar */
-  max: number;
+  /**
+   * the leader's value, to draw the bar as long as the value against it;
+   * without it every bar fills the row and shows only the split
+   */
+  max?: number;
   segments: Segment[];
   to?: string;
   details?: ReactNode;
@@ -235,7 +249,7 @@ export function LeaderboardRow({
             {value}
           </Typography>
         </Box>
-        <Bar segments={segments} share={max > 0 ? value / max : 0} />
+        <Bar segments={segments} share={max ? value / max : 1} />
       </Box>
     </>
   );
@@ -316,7 +330,7 @@ function Legend({ items }: Readonly<{ items: LegendItem[] }>) {
               color: "text.secondary",
             }}
           >
-            <Swatch color={item.color} />
+            <Swatch item={item} />
             {item.label}
           </Box>
         </Tooltip>

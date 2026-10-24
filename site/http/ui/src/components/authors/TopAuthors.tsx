@@ -9,7 +9,11 @@ import {
 } from "../leaderboard/Leaderboard";
 import { formatDuration } from "../../utils/formatDuration";
 
-const found: LegendItem = { label: "найдены", color: COUNT_COLOR };
+const found: LegendItem = {
+  label: "найдены",
+  color: COUNT_COLOR,
+  dotted: true,
+};
 const notFound: LegendItem = {
   label: "не найдены",
   color: "#d9761a",
@@ -20,8 +24,6 @@ export default function TopAuthors() {
   const { data: authors = [], isPending } = useAuthors(10);
 
   if (!isPending && authors.length === 0) return null;
-
-  const max = Math.max(0, ...authors.map((a) => a.author_posts_total));
 
   return (
     <LeaderboardCard
@@ -45,7 +47,6 @@ export default function TopAuthors() {
             avatar={<UserAvatar src={a.avatar_url} login={a.login} />}
             name={a.login}
             value={a.author_posts_total}
-            max={max}
             segments={segments}
             details={
               <Breakdown

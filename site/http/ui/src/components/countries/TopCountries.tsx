@@ -56,7 +56,14 @@ export default function TopCountries() {
           name={countryName(c.code)}
           value={c.count}
           max={max}
-          segments={[{ label: "загадки", color: COUNT_COLOR, value: c.count }]}
+          segments={[
+            {
+              label: "загадки",
+              color: COUNT_COLOR,
+              dotted: true,
+              value: c.count,
+            },
+          ]}
         />
       ))}
     </LeaderboardCard>
