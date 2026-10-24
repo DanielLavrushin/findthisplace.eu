@@ -1,0 +1,7 @@
+.env
+.mcp.json
+.claude/settings.json
+.claude/settings.local.json
+.claude/skills/
+site/http/ui/dist/
+.codegraph/codegraph.db
