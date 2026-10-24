@@ -1,33 +1,13 @@
 import { Searcher, useSearchers } from "./useSearchers";
 import {
   Breakdown,
-  COUNT_COLOR,
   LeaderboardCard,
   LeaderboardRow,
-  LegendItem,
+  TIERS,
+  tierSegments,
   UserAvatar,
 } from "../leaderboard/Leaderboard";
 import { formatDuration } from "../../utils/formatDuration";
-
-// the colours of the tier pins on the map; silver and gold a shade deeper,
-// or they would vanish against the white card
-const tierColors = [COUNT_COLOR, "#c87830", "#b4bfcc", "#e8a400", "#c0187e"];
-// the cards' metals; finds below them are just the usual ones
-const tierLabels = ["обычные", "бронза", "серебро", "золото", "эпик"];
-const tierWaits = [
-  "меньше полугода",
-  "от полугода до года",
-  "1–2 года",
-  "2–5 лет",
-  "больше 5 лет",
-];
-
-const tiers: LegendItem[] = tierLabels.map((label, t) => ({
-  label,
-  color: tierColors[t],
-  dotted: t === 0,
-  hint: `загадка ждала сыщика ${tierWaits[t]}`,
-}));
 
 function tierCounts(s: Searcher): number[] {
   return [
@@ -48,16 +28,13 @@ export default function TopSearchers() {
     <LeaderboardCard
       title="Сыщики"
       subtitle="кто нашёл больше всего мест"
-      legend={tiers}
+      legend={TIERS}
       viewAllLink="/searchers"
       viewAllLabel="Смотреть всех"
       loading={isPending}
     >
       {searchers.map((s, i) => {
-        const segments = tierCounts(s).map((value, t) => ({
-          ...tiers[t],
-          value,
-        }));
+        const segments = tierSegments(tierCounts(s));
         return (
           <LeaderboardRow
             key={s.id}

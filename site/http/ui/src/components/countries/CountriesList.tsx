@@ -1,246 +1,177 @@
-import { Box, Button, Paper, Tooltip, Typography } from "@mui/material";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import ReactCountryFlag from "react-country-flag";
-import { Link as RouterLink } from "react-router-dom";
-import { useCountries } from "./useCountries";
-import markerIcon from "../../../assets/marker.png";
+import { useMemo, useState } from "react";
+import {
+  Box,
+  InputAdornment,
+  Paper,
+  Skeleton,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
+  Typography,
+} from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import Flag from "./Flag";
+import { Country } from "./useCountries";
+import {
+  Breakdown,
+  LeaderboardRow,
+  Legend,
+  TIERS,
+  tierSegments,
+} from "../leaderboard/Leaderboard";
+import { countryName } from "../posts/cardUtils";
+import { formatDuration } from "../../utils/formatDuration";
+import { plural } from "../../utils/plural";
 
-const medalColors = ["#FFD700", "#C0C0C0", "#CD7F32"];
+type Order = "count" | "name";
 
-interface CountriesListProps {
-  limit?: number;
-  title?: string;
-  showBars?: boolean;
-  columns?: 1 | 2;
-  startIndex?: number;
-  viewAllLink?: string;
+// "Россия", "russia" and "ru" all find Russia; ё is typed as е more often than not
+function normalize(s: string): string {
+  return s.toLowerCase().replace(/ё/g, "е");
 }
 
-function CountryRow({
-  country,
-  code,
-  count,
-  i,
-  maxCount,
-  showBar,
-}: {
-  country: string;
-  code: string;
-  count: number;
-  i: number;
-  maxCount: number;
-  showBar: boolean;
-}) {
-  const barPct = maxCount > 0 ? (count / maxCount) * 100 : 0;
-
-  return (
-    <Box
-      sx={{
-        display: "grid",
-        gridTemplateColumns: showBar
-          ? "28px 40px 1fr 1fr auto"
-          : "28px 40px 1fr auto",
-        alignItems: "center",
-        gap: 1,
-        px: 1,
-        py: 0.75,
-        borderRadius: 2,
-        background:
-          i < 3
-            ? `linear-gradient(90deg, ${medalColors[i]}18 0%, transparent 60%)`
-            : "transparent",
-        borderLeft:
-          i < 3 ? `4px solid ${medalColors[i]}` : "4px solid transparent",
-        transition: "background 0.15s",
-        "&:hover": { background: "action.hover" },
-      }}
-    >
-      <Typography
-        sx={{
-          fontWeight: 700,
-          fontSize: i < 3 ? "1.25rem" : "1rem",
-          textAlign: "center",
-          color: i < 3 ? medalColors[i] : "text.disabled",
-        }}
-      >
-        {i + 1}
-      </Typography>
-
-      <Tooltip title={country} arrow>
-        <Box
-          sx={{
-            width: 36,
-            height: 36,
-            borderRadius: "50%",
-            overflow: "hidden",
-            border: i < 3 ? `2px solid ${medalColors[i]}` : "2px solid",
-            borderColor: i < 3 ? undefined : "divider",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            boxShadow:
-              i < 3
-                ? `0 2px 8px ${medalColors[i]}40`
-                : "0 1px 3px rgba(0,0,0,0.12)",
-            flexShrink: 0,
-          }}
-        >
-          <ReactCountryFlag
-            countryCode={code.toUpperCase()}
-            svg
-            style={{
-              width: "140%",
-              height: "140%",
-              objectFit: "cover",
-            }}
-          />
-        </Box>
-      </Tooltip>
-
-      <Typography
-        noWrap
-        sx={{
-          fontWeight: i < 3 ? 700 : 400,
-          fontSize: "0.9rem",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-      >
-        {country}
-      </Typography>
-
-      {showBar && (
-        <Box sx={{ position: "relative", height: 16, borderRadius: 8, bgcolor: "#f5f5f5", overflow: "hidden" }}>
-          <Box
-            sx={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              height: "100%",
-              width: `${barPct}%`,
-              borderRadius: 8,
-              background:
-                i < 3
-                  ? `linear-gradient(90deg, ${medalColors[i]}, ${medalColors[i]}99)`
-                  : "linear-gradient(90deg, #ffb74d, #ffa726)",
-              transition: "width 0.4s ease",
-            }}
-          />
-        </Box>
-      )}
-
-      <Tooltip title="Найдено постов" arrow>
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.5,
-            justifyContent: "flex-end",
-          }}
-        >
-          <img src={markerIcon} alt="" width={16} height={16} />
-          <Typography sx={{ fontWeight: 700, fontSize: "0.95rem", minWidth: 32, textAlign: "right" }}>
-            {count}
-          </Typography>
-        </Box>
-      </Tooltip>
-    </Box>
-  );
+interface CountriesListProps {
+  countries: Country[];
+  loading: boolean;
 }
 
 export default function CountriesList({
-  limit,
-  title,
-  showBars = false,
-  columns = 1,
-  startIndex = 0,
-  viewAllLink,
-}: CountriesListProps) {
-  const { data: countries = [] } = useCountries();
+  countries,
+  loading,
+}: Readonly<CountriesListProps>) {
+  const [query, setQuery] = useState("");
+  const [order, setOrder] = useState<Order>("count");
 
-  const items = limit ? countries.slice(startIndex, startIndex + limit) : countries.slice(startIndex);
+  const named = useMemo(
+    () => countries.map((c) => ({ ...c, name: countryName(c.code) })),
+    [countries],
+  );
 
-  if (items.length === 0) return null;
+  const shown = useMemo(() => {
+    const q = normalize(query.trim());
+    const found = q
+      ? named.filter((c) =>
+          [c.name, c.country, c.code].some((s) => normalize(s).includes(q)),
+        )
+      : named;
+    return order === "name"
+      ? [...found].sort((a, b) => a.name.localeCompare(b.name, "ru"))
+      : found;
+  }, [named, query, order]);
 
-  const maxCount = countries.length > 0 ? countries[0].count : 1;
-
-  const content =
-    columns === 2 ? (
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-          gap: 1,
-        }}
-      >
-        {items.map((c, idx) => (
-          <CountryRow
-            key={c.code}
-            country={c.country}
-            code={c.code}
-            count={c.count}
-            i={startIndex + idx}
-            maxCount={maxCount}
-            showBar={showBars}
-          />
-        ))}
-      </Box>
-    ) : (
-      <Box sx={{ display: "flex", flexDirection: "column", gap: 0.5 }}>
-        {items.map((c, idx) => (
-          <CountryRow
-            key={c.code}
-            country={c.country}
-            code={c.code}
-            count={c.count}
-            i={startIndex + idx}
-            maxCount={maxCount}
-            showBar={showBars}
-          />
-        ))}
-      </Box>
-    );
+  // bars keep the leader's scale while the list is searched
+  const max = Math.max(0, ...countries.map((c) => c.count));
 
   return (
     <Paper
       elevation={0}
       sx={{
-        p: 3,
+        p: { xs: 2, sm: 2.5 },
         borderRadius: 3,
         border: "1px solid",
         borderColor: "divider",
-        width: "100%",
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
       }}
     >
-      {title && (
-        <Typography
-          variant="h5"
-          sx={{
-            fontWeight: 700,
-            mb: 3,
-            textAlign: "center",
-            textTransform: "uppercase",
-            letterSpacing: 2,
+      <Box
+        sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          columnGap: 2,
+          rowGap: 1.5,
+          mb: 2,
+        }}
+      >
+        <Box sx={{ flex: "1 1 240px", minWidth: 0 }}>
+          <Typography component="h2" sx={{ fontSize: "1.25rem", fontWeight: 700 }}>
+            Все страны
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            сколько мест в каждой и как долго их искали
+          </Typography>
+        </Box>
+        <TextField
+          size="small"
+          placeholder="Найти страну"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          inputProps={{ "aria-label": "Найти страну" }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
           }}
+          sx={{ flex: { xs: "1 1 100%", sm: "0 1 220px" } }}
+        />
+        <ToggleButtonGroup
+          size="small"
+          exclusive
+          value={order}
+          onChange={(_, v: Order | null) => {
+            if (v) setOrder(v);
+          }}
+          aria-label="Порядок стран"
         >
-          {title}
+          <ToggleButton value="count">по числу мест</ToggleButton>
+          <ToggleButton value="name">по алфавиту</ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+
+      <Box
+        component="ol"
+        sx={{
+          listStyle: "none",
+          m: 0,
+          p: 0,
+          // down each column, as a ranking reads
+          columnCount: { xs: 1, sm: 2, lg: 3 },
+          columnGap: 4,
+          "& > li": { breakInside: "avoid" },
+        }}
+      >
+        {loading
+          ? Array.from({ length: 12 }, (_, i) => (
+              <li key={i}>
+                <Skeleton variant="rounded" height={32} sx={{ my: "6px" }} />
+              </li>
+            ))
+          : shown.map((c) => {
+              const segments = tierSegments(c.tiers);
+              return (
+                <LeaderboardRow
+                  key={c.code}
+                  to={`/tags/${c.slug}`}
+                  avatar={<Flag code={c.code} />}
+                  name={c.name}
+                  value={c.count}
+                  max={max}
+                  segments={segments}
+                  details={
+                    <Breakdown
+                      segments={segments}
+                      note={[
+                        `${plural(c.authors, "автор")} · ${plural(c.searchers, "сыщик")}`,
+                        c.avg_search_time > 0 &&
+                          `в среднем на поиск: ${formatDuration(c.avg_search_time)}`,
+                      ]
+                        .filter(Boolean)
+                        .join(", ")}
+                    />
+                  }
+                />
+              );
+            })}
+      </Box>
+
+      {!loading && shown.length === 0 && (
+        <Typography color="text.secondary" sx={{ py: 3, textAlign: "center" }}>
+          Такой страны в списке нет: возможно, там ещё ничего не загадано
         </Typography>
       )}
-      {content}
 
-      {viewAllLink && (
-        <Button
-          component={RouterLink}
-          to={viewAllLink}
-          endIcon={<ArrowForwardIcon />}
-          sx={{ mt: "auto", pt: 2, display: "flex", mx: "auto" }}
-        >
-          Смотреть все
-        </Button>
-      )}
+      <Legend items={TIERS} />
     </Paper>
   );
 }

@@ -20,6 +20,32 @@ const ROW_HEIGHT = 44;
  */
 export const COUNT_COLOR = "#767676";
 
+// the colours of the tier pins on the map; silver and gold a shade deeper,
+// or they would vanish against the white card
+const tierColors = [COUNT_COLOR, "#c87830", "#b4bfcc", "#e8a400", "#c0187e"];
+// the cards' metals; finds below them are just the usual ones
+const tierLabels = ["обычные", "бронза", "серебро", "золото", "эпик"];
+const tierWaits = [
+  "меньше полугода",
+  "от полугода до года",
+  "1–2 года",
+  "2–5 лет",
+  "больше 5 лет",
+];
+
+/** Finds by how long the puzzle waited for its searcher. */
+export const TIERS: LegendItem[] = tierLabels.map((label, t) => ({
+  label,
+  color: tierColors[t],
+  dotted: t === 0,
+  hint: `загадка ждала сыщика ${tierWaits[t]}`,
+}));
+
+/** Counts per tier, lowest first, as the segments of a row's bar. */
+export function tierSegments(counts: readonly number[]): Segment[] {
+  return TIERS.map((tier, t) => ({ ...tier, value: counts[t] ?? 0 }));
+}
+
 // the top three wear the metals of the post cards' frames (PostCard.css)
 const medals = [
   {
@@ -309,7 +335,7 @@ export function LeaderboardRow({
   );
 }
 
-function Legend({ items }: Readonly<{ items: LegendItem[] }>) {
+export function Legend({ items }: Readonly<{ items: LegendItem[] }>) {
   return (
     <Box
       component="ul"
@@ -350,8 +376,8 @@ interface LeaderboardCardProps {
   /** what the number in each row counts */
   subtitle: string;
   legend?: LegendItem[];
-  viewAllLink: string;
-  viewAllLabel: string;
+  viewAllLink?: string;
+  viewAllLabel?: string;
   loading: boolean;
   size?: number;
   children: ReactNode;
@@ -403,15 +429,17 @@ export function LeaderboardCard({
 
       {legend && <Legend items={legend} />}
 
-      <Box sx={{ mt: "auto", pt: 2, textAlign: "center" }}>
-        <Button
-          component={RouterLink}
-          to={viewAllLink}
-          endIcon={<ArrowForwardIcon />}
-        >
-          {viewAllLabel}
-        </Button>
-      </Box>
+      {viewAllLink && (
+        <Box sx={{ mt: "auto", pt: 2, textAlign: "center" }}>
+          <Button
+            component={RouterLink}
+            to={viewAllLink}
+            endIcon={<ArrowForwardIcon />}
+          >
+            {viewAllLabel}
+          </Button>
+        </Box>
+      )}
     </Paper>
   );
 }

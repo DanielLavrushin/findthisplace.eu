@@ -12,6 +12,7 @@ import MapPage from "./pages/MapPage";
 import AuthorsPage from "./pages/AuthorsPage";
 import AuthorDetailPage from "./pages/AuthorDetailPage";
 import TagsPage from "./pages/TagsPage";
+import CountryDetailPage from "./pages/CountryDetailPage";
 import SearchersPage from "./pages/SearchersPage";
 import SearcherDetailPage from "./pages/SearcherDetailPage";
 import LoginPage from "./pages/LoginPage";
@@ -37,6 +38,7 @@ function App() {
                 <Route path="/searchers" element={<SearchersPage />} />
                 <Route path="/searchers/:id" element={<SearcherDetailPage />} />
                 <Route path="/tags" element={<TagsPage />} />
+                <Route path="/tags/:slug" element={<CountryDetailPage />} />
                 <Route path="*" element={<Navigate to="/map" replace />} />
               </Route>
             </Routes>

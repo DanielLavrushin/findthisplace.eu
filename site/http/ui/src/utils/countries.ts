@@ -2,6 +2,9 @@ import countriesData from "../../../handler/countries.json";
 
 const countries: Record<string, string> = countriesData;
 
+/** Every country and territory a post can be tagged with. */
+export const COUNTRY_COUNT = Object.keys(countries).length;
+
 export function countryCodeToFlag(code: string): string {
   if (!code || code.length !== 2) return "🌍";
   const codePoints = code

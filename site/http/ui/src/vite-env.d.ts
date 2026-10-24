@@ -9,11 +9,22 @@ declare module "react-simple-maps" {
     width?: number;
     height?: number;
     style?: React.CSSProperties;
+    "aria-hidden"?: boolean;
     children?: ReactNode;
+  }
+  interface ZoomPosition {
+    coordinates: [number, number];
+    zoom: number;
   }
   interface ZoomableGroupProps {
     center?: [number, number];
     zoom?: number;
+    minZoom?: number;
+    maxZoom?: number;
+    translateExtent?: [[number, number], [number, number]];
+    /** which d3-zoom gestures move the map; the rest pass to the page */
+    filterZoomEvent?: (event: WheelEvent | MouseEvent | TouchEvent) => boolean;
+    onMoveEnd?: (position: ZoomPosition) => void;
     children?: ReactNode;
   }
   interface GeographiesProps {
@@ -32,6 +43,7 @@ declare module "react-simple-maps" {
     fill?: string;
     stroke?: string;
     strokeWidth?: number;
+    onClick?: (event: React.MouseEvent<SVGPathElement>) => void;
     style?: {
       default?: React.CSSProperties;
       hover?: React.CSSProperties;

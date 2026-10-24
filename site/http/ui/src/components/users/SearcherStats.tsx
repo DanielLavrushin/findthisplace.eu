@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Box, Typography, useTheme } from "@mui/material";
+import StatCards, { StatCardProps } from "../stats/StatCards";
 import { UserPost } from "./useUserDetail";
 import { countryCodeToFlag, getCountryName } from "../../utils/countries";
 import { formatDuration } from "../../utils/formatDuration";
@@ -8,100 +8,6 @@ import { plural } from "../../utils/plural";
 interface SearcherStatsProps {
   posts: UserPost[];
   avgSearchTime?: number;
-}
-
-interface StatCardProps {
-  icon: string;
-  value: string;
-  label: string;
-  sublabel?: string;
-  gradient: string;
-}
-
-function StatCard({
-  icon,
-  value,
-  label,
-  sublabel,
-  gradient,
-}: Readonly<StatCardProps>) {
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
-
-  return (
-    <Box
-      sx={{
-        position: "relative",
-        p: 2,
-        borderRadius: 3,
-        background: isDark ? "rgba(255,255,255,0.03)" : "rgba(255,255,255,0.7)",
-        backdropFilter: "blur(10px)",
-        border: "1px solid",
-        borderColor: isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
-        overflow: "hidden",
-        transition: "transform 0.2s ease, box-shadow 0.2s ease",
-        "&:hover": {
-          transform: "translateY(-2px)",
-          boxShadow: isDark
-            ? "0 8px 32px rgba(0,0,0,0.3)"
-            : "0 8px 32px rgba(0,0,0,0.08)",
-        },
-        "&::before": {
-          content: '""',
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 3,
-          background: gradient,
-        },
-      }}
-    >
-      <Box sx={{ display: "flex", alignItems: "flex-start", gap: 1.5 }}>
-        <Box sx={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>{icon}</Box>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography
-            sx={{
-              fontSize: "1.1rem",
-              fontWeight: 800,
-              lineHeight: 1.2,
-              background: gradient,
-              backgroundClip: "text",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            {value}
-          </Typography>
-          <Typography
-            variant="caption"
-            sx={{
-              display: "block",
-              color: "text.secondary",
-              fontWeight: 500,
-              mt: 0.25,
-              lineHeight: 1.2,
-            }}
-          >
-            {label}
-          </Typography>
-          {sublabel && (
-            <Typography
-              variant="caption"
-              sx={{
-                display: "block",
-                color: "text.disabled",
-                fontSize: "0.7rem",
-                lineHeight: 1.2,
-              }}
-            >
-              {sublabel}
-            </Typography>
-          )}
-        </Box>
-      </Box>
-    </Box>
-  );
 }
 
 function formatSearchTime(seconds: number): string {
@@ -349,39 +255,5 @@ export default function SearcherStats({
     });
   }
 
-  if (statCards.length === 0) return null;
-
-  return (
-    <Box sx={{ mb: 3 }}>
-      <Typography
-        variant="subtitle2"
-        sx={{
-          mb: 1.5,
-          color: "text.secondary",
-          fontWeight: 600,
-          textTransform: "uppercase",
-          letterSpacing: 1,
-          fontSize: "0.7rem",
-        }}
-      >
-        Статистика
-      </Typography>
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: {
-            xs: "repeat(2, 1fr)",
-            sm: "repeat(3, 1fr)",
-            md: "repeat(4, 1fr)",
-            lg: "repeat(5, 1fr)",
-          },
-          gap: 2,
-        }}
-      >
-        {statCards.map((card, i) => (
-          <StatCard key={i} {...card} />
-        ))}
-      </Box>
-    </Box>
-  );
+  return <StatCards title="Статистика" cards={statCards} />;
 }
