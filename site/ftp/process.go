@@ -240,9 +240,18 @@ func loadCommentCoords(ctx context.Context, store *db.DB, postIDs []int) (map[in
 	return result, cur.Err()
 }
 
+// loadExtractedCommentIDs are the comments already located, so not parsed
+// again. Coordinates off the globe don't count: the legacy import (solr2mongo)
+// brought in single-digit latitudes with "%40" glued on (Kuala Lumpur at
+// 403.11, not 3.11), and only a fresh parse fixes them.
 func loadExtractedCommentIDs(ctx context.Context, store *db.DB, commentIDs []int) (map[int]bool, error) {
 	cur, err := store.FtpComments.Find(ctx,
-		bson.M{"_id": bson.M{"$in": commentIDs}, "extracted": true},
+		bson.M{
+			"_id":       bson.M{"$in": commentIDs},
+			"extracted": true,
+			"latitude":  bson.M{"$gte": -90, "$lte": 90},
+			"longitude": bson.M{"$gte": -180, "$lte": 180},
+		},
 		options.Find().SetProjection(bson.M{"_id": 1}))
 	if err != nil {
 		return nil, err

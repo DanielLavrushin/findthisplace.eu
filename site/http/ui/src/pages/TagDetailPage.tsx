@@ -100,6 +100,7 @@ function TagProfile({ slug }: Readonly<{ slug: string }>) {
         .sort((a, b) => b.tier - a.tier),
     [posts, activeTier],
   );
+  const mapped = useMemo(() => shown.filter(hasCoords), [shown]);
 
   const bounds = useMemo(() => {
     const points = posts
@@ -336,6 +337,16 @@ function TagProfile({ slug }: Readonly<{ slug: string }>) {
             <>
               <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>
                 Места на карте
+                {mapped.length < shown.length && (
+                  <Typography
+                    component="span"
+                    color="text.secondary"
+                    sx={{ fontWeight: 400, ml: 1, fontSize: "0.9rem" }}
+                  >
+                    {" "}
+                    {mapped.length} из {shown.length}: у остальных нет координат
+                  </Typography>
+                )}
               </Typography>
               <Box
                 sx={{
@@ -354,7 +365,7 @@ function TagProfile({ slug }: Readonly<{ slug: string }>) {
                   style={{ height: "100%", width: "100%" }}
                 >
                   <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                  {shown.filter(hasCoords).map((post) => (
+                  {mapped.map((post) => (
                     <PostMarker
                       key={post.id}
                       post={post}
