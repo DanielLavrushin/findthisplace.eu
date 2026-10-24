@@ -31,9 +31,11 @@
   --light-y: 0;
   --card-scale: 1;
   --card-opacity: 0;
+  --translate-x: 0px;
   --translate-y: 0px;
   --rotate-x: 0deg;
   --rotate-y: 0deg;
+  --turn: 0deg;
 
   /* printed card */
   --frame: 3.6cqw;
@@ -83,11 +85,18 @@
   z-index: calc(var(--card-scale) * 120);
 }
 
+/* popped out into the showcase: the slot stays, the card is elsewhere */
+.post-card.is-away {
+  visibility: hidden;
+}
+
 /* ── translater & rotator ── */
 .post-card__translater,
 .post-card__rotator {
   display: grid;
-  perspective: 600px;
+  /* scales with the card (600px on a 340px card), so a big card doesn't
+     look more distorted than a small one at the same tilt */
+  perspective: 176cqw;
   will-change: transform, box-shadow;
   transform-origin: center;
   transform-style: preserve-3d;
@@ -96,12 +105,15 @@
 .post-card__translater {
   width: auto;
   position: relative;
-  transform: translate3d(0, var(--translate-y), 0.01px)
+  transform: translate3d(var(--translate-x), var(--translate-y), 0.01px)
     scale(var(--card-scale));
 }
 
+/* The turn is the innermost rotation, so the tilt stays relative to the
+   viewer: the back tilts toward the pointer just like the front. */
 .post-card__rotator {
-  transform: rotateY(var(--rotate-x)) rotateX(var(--rotate-y));
+  transform: rotateY(var(--rotate-x)) rotateX(var(--rotate-y))
+    rotateY(var(--turn));
   pointer-events: auto;
   cursor: pointer;
   transition: box-shadow 0.4s ease;
@@ -604,9 +616,16 @@
   filter: brightness(0.55) var(--flake-glitter-tint);
 }
 
+/* only the face that is up takes clicks on its links */
+.post-card__rotator.is-flipped .post-card__front a,
+.post-card__rotator:not(.is-flipped) .post-card__back a {
+  pointer-events: none;
+}
+
 /* ── glare: the gloss of the card surface ── */
 .post-card__glare {
   transform: translateZ(1.41px);
+  backface-visibility: hidden;
   background-image: radial-gradient(
     farthest-corner circle at var(--pointer-x) var(--pointer-y),
     hsla(0, 0%, 100%, 0.8) 10%,
@@ -785,7 +804,9 @@
    falls away from it, and it catches the light on its own (gloss + a foil
    glint on the flag) rather than sharing the card's holo. */
 .post-card__stamp {
-  --stamp-width: clamp(52px, 32%, 72px);
+  /* proportional, so the stamp keeps its size relative to the card when the
+     card pops out and grows */
+  --stamp-width: 26%;
 
   position: absolute;
   bottom: -2%;

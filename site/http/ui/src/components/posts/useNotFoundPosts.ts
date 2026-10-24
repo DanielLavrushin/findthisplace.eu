@@ -14,6 +14,8 @@ export interface NotFoundPost {
   found_by?: string;
   tier: number;
   country_code?: string;
+  latitude?: number;
+  longitude?: number;
 }
 
 async function fetchNotFoundPosts(): Promise<NotFoundPost[]> {

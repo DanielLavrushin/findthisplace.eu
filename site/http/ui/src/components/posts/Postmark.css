@@ -1,0 +1,23 @@
+/* ── postmark: cancellation ink over the stamp of a solved card ──
+   The ring sits on the stamp's left edge and the wavy lines run onto the
+   photo. Multiplied like real ink, broken up by the wear texture. */
+.post-card__postmark {
+  position: absolute;
+  z-index: 11;
+  right: 7.5%;
+  bottom: -5.5%;
+  width: 50%;
+  aspect-ratio: 2;
+  overflow: visible;
+  color: hsl(250, 30%, 20%);
+  opacity: 0.74;
+  mix-blend-mode: multiply;
+  transform: rotate(var(--postmark-tilt));
+  pointer-events: none;
+  font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", Arial,
+    sans-serif;
+  -webkit-mask: url("../../../assets/ink-wear.webp") var(--wear-x)
+    var(--wear-y) / 90px repeat;
+  mask: url("../../../assets/ink-wear.webp") var(--wear-x) var(--wear-y) /
+    90px repeat;
+}

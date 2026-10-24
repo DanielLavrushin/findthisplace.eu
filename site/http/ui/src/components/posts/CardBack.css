@@ -1,0 +1,276 @@
+/* ── the back of the card ──
+   Same frame and stock as the front; seen while the card spins and when it
+   is turned over. Content blocks are positioned without a z-index, so the
+   printed emblem can multiply straight into the stock. */
+.post-card__back {
+  position: relative;
+  transform: rotateY(180deg) translateZ(0.01px);
+  backface-visibility: hidden;
+  background:
+    url("../../../assets/paper-grain.webp") 0 0 / 160px,
+    var(--frame-bg);
+  background-blend-mode: soft-light;
+  box-shadow:
+    inset 0 0 0 1px hsla(0, 0%, 100%, 0.45),
+    inset 0 0 0 2px hsla(30, 30%, 15%, 0.08);
+  isolation: isolate;
+  color: var(--ink);
+}
+
+.post-card__back-side {
+  position: absolute;
+  inset: var(--frame);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.4cqw;
+  padding: 6cqw 6.5cqw;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.post-card__back-side.is-hidden {
+  visibility: hidden;
+}
+
+.post-card__back-side--found {
+  justify-content: space-between;
+  gap: 2cqw;
+}
+
+/* the tier pin, printed big and worn into the stock */
+.post-card__emblem {
+  width: 62%;
+  aspect-ratio: 1;
+  flex-shrink: 0;
+  background: var(--emblem-ink);
+  -webkit-mask: url("../../../assets/emblem-mask.webp") center / contain
+    no-repeat;
+  mask: url("../../../assets/emblem-mask.webp") center / contain no-repeat;
+  mix-blend-mode: multiply;
+  opacity: 0.92;
+}
+
+.post-card__emblem--small {
+  width: 36%;
+}
+
+.post-card__wordmark {
+  margin-top: -1.5cqw;
+  font-size: 4cqw;
+  font-weight: 700;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: var(--emblem-text);
+  mix-blend-mode: multiply;
+  opacity: 0.85;
+}
+
+.post-card__back-heading {
+  font-size: 3.6cqw;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.post-card__back-title {
+  margin-top: 2cqw;
+  font-size: 5.4cqw;
+  font-weight: 700;
+}
+
+.post-card__back-note {
+  font-size: 4.2cqw;
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.post-card__back-facts {
+  margin: 0;
+  width: 100%;
+  display: grid;
+  gap: 1.2cqw;
+  font-size: 4.2cqw;
+}
+
+.post-card__back-facts > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 3cqw;
+  padding-bottom: 1cqw;
+  border-bottom: 1px dashed hsla(30, 30%, 20%, 0.28);
+}
+
+.post-card__back-facts dt {
+  font-style: italic;
+  color: var(--ink-soft);
+}
+
+.post-card__back-facts dd {
+  margin: 0;
+  font-weight: 700;
+  text-align: right;
+}
+
+.post-card__back-facts a {
+  color: inherit;
+  pointer-events: auto;
+}
+
+.post-card__back-link {
+  margin-top: 1cqw;
+  padding: 1.4cqw 4.4cqw;
+  border: 1.5px solid hsla(30, 30%, 15%, 0.55);
+  border-radius: 999px;
+  background: hsla(0, 0%, 100%, 0.35);
+  color: var(--ink);
+  font-size: 4cqw;
+  font-weight: 700;
+  text-decoration: none;
+  pointer-events: auto;
+  transition: background 0.2s;
+}
+
+.post-card__back-link:hover {
+  background: hsla(0, 0%, 100%, 0.6);
+}
+
+/* ── mini map of the spot ── */
+.post-card__map {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1.3;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 2cqw;
+  background: hsl(40, 35%, 88%);
+  box-shadow:
+    inset 0 0 0 1px hsla(30, 40%, 20%, 0.35),
+    0 1px 3px hsla(30, 40%, 10%, 0.35);
+}
+
+/* old printed map: warm, a little faded */
+.post-card__map-tiles {
+  position: absolute;
+  width: 768px;
+  height: 768px;
+  filter: sepia(0.3) saturate(0.9) contrast(1.02);
+}
+
+.post-card__map-tiles img {
+  position: absolute;
+  width: 256px;
+  height: 256px;
+}
+
+/* paper texture and a darkened rim, over the tiles */
+.post-card__map::before,
+.post-card__map::after {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+}
+
+.post-card__map::before {
+  background: url("../../../assets/paper-grain.webp") 0 0 / 160px;
+  mix-blend-mode: soft-light;
+  opacity: 0.45;
+}
+
+.post-card__map::after {
+  background: radial-gradient(
+    ellipse at center,
+    transparent 58%,
+    hsla(30, 40%, 20%, 0.32) 100%
+  );
+  mix-blend-mode: multiply;
+}
+
+.post-card__map-pin {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 50%;
+  width: 13%;
+  transform: translate(-50%, -94%);
+  filter: drop-shadow(0 2px 2px hsla(0, 0%, 0%, 0.45));
+}
+
+.post-card__map-credit {
+  position: absolute;
+  z-index: 2;
+  right: 1cqw;
+  bottom: 0.8cqw;
+  padding: 0.2cqw 0.8cqw;
+  border-radius: 0.6cqw;
+  background: hsla(40, 40%, 95%, 0.75);
+  color: hsla(30, 20%, 20%, 0.85);
+  font-size: 2.2cqw;
+}
+
+/* gloss of the back's card stock */
+.post-card__back-gloss {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+  background-image: radial-gradient(
+    farthest-corner circle at var(--pointer-x) var(--pointer-y),
+    hsla(0, 0%, 100%, 0.7) 10%,
+    hsla(0, 0%, 100%, 0.45) 22%,
+    hsla(0, 0%, 0%, 0.4) 90%
+  );
+  mix-blend-mode: overlay;
+  opacity: calc(var(--card-opacity) * var(--glare));
+}
+
+/* ── emblem ink per tier: the colours of the tier pins, as printed ink ── */
+.post-card {
+  --emblem-ink: linear-gradient(160deg, #8c8c8c 0%, #4a4a4a 100%);
+  --emblem-text: hsl(0, 0%, 28%);
+}
+
+.post-card[data-tier="1"] {
+  --emblem-ink: linear-gradient(
+    160deg,
+    #c27a3c 0%,
+    #6e3a14 55%,
+    #a8642c 100%
+  );
+  --emblem-text: hsl(24, 45%, 26%);
+}
+
+.post-card[data-tier="2"] {
+  --emblem-ink: linear-gradient(
+    160deg,
+    #b9bec7 0%,
+    #5f6670 55%,
+    #9aa1ab 100%
+  );
+  --emblem-text: hsl(215, 12%, 30%);
+}
+
+.post-card[data-tier="3"] {
+  --emblem-ink: linear-gradient(
+    160deg,
+    #f0b72f 0%,
+    #b8740c 55%,
+    #e3a21f 100%
+  );
+  --emblem-text: hsl(36, 70%, 26%);
+}
+
+.post-card[data-tier="4"] {
+  --emblem-ink: linear-gradient(
+    160deg,
+    #c31d8a 0%,
+    #5b1680 60%,
+    #8a2a9e 100%
+  );
+  --emblem-text: hsl(285, 50%, 26%);
+}

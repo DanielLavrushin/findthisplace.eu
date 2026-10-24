@@ -1,0 +1,128 @@
+/* ── showcase: a card popped out of the grid ── */
+.post-card-showcase {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  outline: none;
+
+  --showcase-glow: hsl(40, 30%, 70%);
+}
+
+.post-card-showcase[data-tier="1"] {
+  --showcase-glow: hsl(25, 55%, 55%);
+}
+
+.post-card-showcase[data-tier="2"] {
+  --showcase-glow: hsl(220, 15%, 70%);
+}
+
+.post-card-showcase[data-tier="3"] {
+  --showcase-glow: hsl(43, 85%, 55%);
+}
+
+.post-card-showcase[data-tier="4"] {
+  --showcase-glow: hsl(280, 60%, 70%);
+}
+
+/* the page dims and blurs, lit from behind the card in its tier colour */
+.post-card-showcase__backdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 50% 46%,
+      color-mix(in srgb, var(--showcase-glow) 40%, transparent) 0%,
+      transparent 55%
+    ),
+    hsla(255, 22%, 9%, 0.74);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  animation: post-card-showcase-in 0.35s ease-out both;
+}
+
+.post-card-showcase.is-closing .post-card-showcase__backdrop {
+  animation: post-card-showcase-out 0.5s ease-in both;
+}
+
+/* clicks around the card fall through to the backdrop (closes) */
+.post-card-showcase__stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  pointer-events: none;
+}
+
+.post-card-showcase__card {
+  width: min(92vw, calc((100dvh - 120px) * 0.718), 560px);
+}
+
+.post-card-showcase__card .post-card__rotator {
+  /* drag to tilt on touch screens, instead of scrolling */
+  touch-action: none;
+}
+
+.post-card-showcase__controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  pointer-events: auto;
+  animation: post-card-showcase-in 0.3s ease-out 0.45s both;
+}
+
+.post-card-showcase.is-closing .post-card-showcase__controls {
+  animation: post-card-showcase-out 0.15s ease-in both;
+}
+
+.post-card-showcase__button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 16px;
+  border: 1px solid hsla(0, 0%, 100%, 0.28);
+  border-radius: 999px;
+  background: hsla(0, 0%, 100%, 0.12);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.2;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.post-card-showcase__button:hover {
+  background: hsla(0, 0%, 100%, 0.22);
+}
+
+.post-card-showcase__button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.post-card-showcase__button--icon {
+  padding: 8px 12px;
+}
+
+@keyframes post-card-showcase-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes post-card-showcase-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .post-card-showcase__backdrop,
+  .post-card-showcase__controls {
+    animation-duration: 0.01s;
+    animation-delay: 0s;
+  }
+}

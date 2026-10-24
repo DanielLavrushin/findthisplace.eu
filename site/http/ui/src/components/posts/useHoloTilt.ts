@@ -13,6 +13,9 @@ const LIFT: SpringConfig = { stiffness: 0.033, damping: 0.45 };
 const SETTLE: SpringConfig = { stiffness: 0.012, damping: 0.1 };
 // fade the light out without it bouncing back on
 const FADE: SpringConfig = { stiffness: 0.02, damping: 0.3 };
+// whole-card moves (pop-out flight, turning over): heavy, no overshoot
+const FLIGHT: SpringConfig = { stiffness: 0.045, damping: 0.42 };
+const TURN: SpringConfig = { stiffness: 0.05, damping: 0.4 };
 
 // how long the card holds its pose after the pointer leaves
 const LEAVE_DELAY_MS = 120;
@@ -58,6 +61,12 @@ class Spring {
     this.cfg = cfg;
   }
 
+  /** Puts the spring at `value` at rest, without animating. */
+  jump(value: number) {
+    this.value = this.last = this.target = value;
+    this.previous = null;
+  }
+
   /** Advances by `dt` frames; returns false once settled on the target. */
   step(dt: number): boolean {
     const velocity = (this.value - this.last) / dt;
@@ -87,15 +96,36 @@ class Spring {
   }
 }
 
-function makeSprings() {
+/** Where the tilt and the light are; enough for another card to take over. */
+export interface HoloPose {
+  rotateX: number;
+  rotateY: number;
+  glareX: number;
+  glareY: number;
+  glareO: number;
+}
+
+/** Offset (px) and scale of the whole card from where it is laid out. */
+export interface Placement {
+  x: number;
+  y: number;
+  scale: number;
+}
+
+function makeSprings(initial?: HoloPose) {
   return {
-    rotateX: new Spring(0),
-    rotateY: new Spring(0),
-    glareX: new Spring(50),
-    glareY: new Spring(50),
-    glareO: new Spring(0, 0.001),
-    scale: new Spring(1, 0.0005),
-    lift: new Spring(0),
+    rotateX: new Spring(initial?.rotateX ?? 0),
+    rotateY: new Spring(initial?.rotateY ?? 0),
+    glareX: new Spring(initial?.glareX ?? 50),
+    glareY: new Spring(initial?.glareY ?? 50),
+    glareO: new Spring(initial?.glareO ?? 0, 0.001),
+    // whole-card springs settle within half a pixel / degree, so a landing
+    // card counts as arrived once it visibly has
+    scale: new Spring(1, 0.001),
+    translateX: new Spring(0, 0.5),
+    translateY: new Spring(0, 0.5),
+    // turning the card over (degrees around its vertical axis)
+    turn: new Spring(0, 0.5),
   };
 }
 
@@ -109,7 +139,7 @@ function round(val: number, precision = 3) {
   return Number.parseFloat(val.toFixed(precision));
 }
 
-function prefersReducedMotion() {
+export function prefersReducedMotion() {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
 
@@ -137,7 +167,16 @@ function paint(el: HTMLElement, s: Springs) {
   st.setProperty("--rotate-x", `${round(s.rotateX.value)}deg`);
   st.setProperty("--rotate-y", `${round(s.rotateY.value)}deg`);
   st.setProperty("--card-scale", `${round(s.scale.value, 4)}`);
-  st.setProperty("--translate-y", `${round(s.lift.value)}px`);
+  st.setProperty("--translate-x", `${round(s.translateX.value)}px`);
+  st.setProperty("--translate-y", `${round(s.translateY.value)}px`);
+  st.setProperty("--turn", `${round(s.turn.value)}deg`);
+}
+
+interface HoloTiltOptions {
+  /** lift the card and scale it up a little while it's hovered */
+  lift?: boolean;
+  /** tilt and light to start from, e.g. taking over from another card */
+  initial?: HoloPose;
 }
 
 /**
@@ -145,16 +184,22 @@ function paint(el: HTMLElement, s: Springs) {
  * card root (receives the CSS variables) and pointer handlers for the
  * interactive surface. `active` is true from the first pointer move until
  * the card has fully settled back to rest, so effect layers can be mounted
- * only while they are visible.
+ * only while they are visible. The whole card can also be moved, scaled and
+ * turned over (`place`, `flyTo`, `turnTo`), which the showcase uses.
  */
-export function useHoloTilt<T extends HTMLElement>() {
+export function useHoloTilt<T extends HTMLElement>({
+  lift = true,
+  initial,
+}: HoloTiltOptions = {}) {
   const cardRef = useRef<T>(null);
-  const springs = useRef<Springs>(makeSprings());
+  const springs = useRef<Springs>(makeSprings(initial));
   const frame = useRef<number | null>(null);
   const lastTime = useRef(0);
   const leaveTimer = useRef<number | null>(null);
   const resting = useRef(true);
-  const [active, setActive] = useState(false);
+  const restListener = useRef<(() => void) | null>(null);
+  // a card taking over a lit pose shows its effects until the light fades
+  const [active, setActive] = useState(() => (initial?.glareO ?? 0) > 0.01);
 
   const tick = useCallback((now: number) => {
     // dt in 60fps frames; capped so a backgrounded tab doesn't explode it
@@ -170,6 +215,9 @@ export function useHoloTilt<T extends HTMLElement>() {
     } else {
       frame.current = null;
       if (resting.current) setActive(false);
+      const listener = restListener.current;
+      restListener.current = null;
+      listener?.();
     }
   }, []);
 
@@ -203,29 +251,90 @@ export function useHoloTilt<T extends HTMLElement>() {
       s.glareX.to(px, FOLLOW);
       s.glareY.to(py, FOLLOW);
       s.glareO.to(1, FOLLOW);
-      s.scale.to(still ? 1 : 1.05, LIFT);
-      s.lift.to(still ? 0 : -6, LIFT);
+      if (lift) {
+        s.scale.to(still ? 1 : 1.05, LIFT);
+        s.translateY.to(still ? 0 : -6, LIFT);
+      }
       kick();
     },
-    [kick],
+    [kick, lift],
   );
+
+  /** Lets the tilt and the light settle back to rest. */
+  const release = useCallback(() => {
+    resting.current = true;
+    const s = springs.current;
+    s.rotateX.to(0, SETTLE, 0.6);
+    s.rotateY.to(0, SETTLE, 0.6);
+    s.glareX.to(50, SETTLE, 0.6);
+    s.glareY.to(50, SETTLE, 0.6);
+    s.glareO.to(0, FADE, 0.6);
+    if (lift) {
+      s.scale.to(1, LIFT);
+      s.translateY.to(0, LIFT);
+    }
+    kick();
+  }, [kick, lift]);
 
   const onPointerLeave = useCallback(() => {
     if (leaveTimer.current !== null) clearTimeout(leaveTimer.current);
     leaveTimer.current = window.setTimeout(() => {
       leaveTimer.current = null;
-      resting.current = true;
-      const s = springs.current;
-      s.rotateX.to(0, SETTLE, 0.6);
-      s.rotateY.to(0, SETTLE, 0.6);
-      s.glareX.to(50, SETTLE, 0.6);
-      s.glareY.to(50, SETTLE, 0.6);
-      s.glareO.to(0, FADE, 0.6);
-      s.scale.to(1, LIFT);
-      s.lift.to(0, LIFT);
-      kick();
+      release();
     }, LEAVE_DELAY_MS);
-  }, [kick]);
+  }, [release]);
+
+  /** Puts the whole card somewhere at once, painted before the next frame. */
+  const place = useCallback((p: Placement, turn: number) => {
+    const s = springs.current;
+    s.translateX.jump(p.x);
+    s.translateY.jump(p.y);
+    s.scale.jump(p.scale);
+    s.turn.jump(turn);
+    if (cardRef.current) paint(cardRef.current, s);
+  }, []);
+
+  /** Flies the whole card to `p`, turning it to `turn` degrees on the way. */
+  const flyTo = useCallback(
+    (p: Placement, turn: number) => {
+      const s = springs.current;
+      s.translateX.to(p.x, FLIGHT);
+      s.translateY.to(p.y, FLIGHT);
+      s.scale.to(p.scale, FLIGHT);
+      s.turn.to(turn, FLIGHT);
+      kick();
+    },
+    [kick],
+  );
+
+  /** Turns the card over to `deg` (multiples of 360 show the front). */
+  const turnTo = useCallback(
+    (deg: number) => {
+      springs.current.turn.to(deg, TURN);
+      kick();
+    },
+    [kick],
+  );
+
+  /** Calls `listener` once every spring has come to rest. */
+  const whenRested = useCallback(
+    (listener: () => void) => {
+      restListener.current = listener;
+      kick();
+    },
+    [kick],
+  );
+
+  const snapshot = useCallback((): HoloPose => {
+    const s = springs.current;
+    return {
+      rotateX: s.rotateX.value,
+      rotateY: s.rotateY.value,
+      glareX: s.glareX.value,
+      glareY: s.glareY.value,
+      glareO: s.glareO.value,
+    };
+  }, []);
 
   useEffect(
     () => () => {
@@ -235,5 +344,18 @@ export function useHoloTilt<T extends HTMLElement>() {
     [],
   );
 
-  return { cardRef, active, onPointerMove, onPointerLeave };
+  return {
+    cardRef,
+    active,
+    onPointerMove,
+    onPointerLeave,
+    release,
+    place,
+    flyTo,
+    turnTo,
+    whenRested,
+    snapshot,
+  };
 }
+
+export type HoloTilt<T extends HTMLElement> = ReturnType<typeof useHoloTilt<T>>;
