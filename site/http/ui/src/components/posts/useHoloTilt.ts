@@ -120,6 +120,11 @@ function paint(el: HTMLElement, s: Springs) {
   st.setProperty("--pointer-y", `${round(gy)}%`);
   st.setProperty("--pointer-from-left", `${round(gx / 100)}`);
   st.setProperty("--pointer-from-top", `${round(gy / 100)}`);
+  // 0 when looking straight at the card, 1 at the edges (steepest tilt)
+  st.setProperty(
+    "--pointer-from-center",
+    `${round(clamp(Math.hypot(gx - 50, gy - 50) / 50, 0, 1))}`,
+  );
   // light direction from the card centre, -1..1 (drives the photo relief)
   st.setProperty("--light-x", `${round(clamp((gx - 50) / 50, -1, 1))}`);
   st.setProperty("--light-y", `${round(clamp((gy - 50) / 50, -1, 1))}`);

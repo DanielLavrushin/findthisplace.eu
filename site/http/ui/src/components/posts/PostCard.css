@@ -24,6 +24,7 @@
 
   --pointer-x: 50%;
   --pointer-y: 50%;
+  --pointer-from-center: 0;
   --pointer-from-top: 0.5;
   --pointer-from-left: 0.5;
   --light-x: 0;
@@ -723,7 +724,11 @@
     calc(var(--pointer-from-left) * 100%) calc(var(--pointer-from-top) * 100%);
 }
 
-/* ── vintage postal stamp ── */
+/* ── vintage postal stamp ──
+   A separate piece of glossy paper stuck on the photo corner. It stands a
+   little proud of the card: it drifts toward the light while its shadow
+   falls away from it, and it catches the light on its own (gloss + a foil
+   glint on the flag) rather than sharing the card's holo. */
 .post-card__stamp {
   --stamp-width: clamp(52px, 32%, 72px);
 
@@ -732,10 +737,15 @@
   right: -5%;
   width: var(--stamp-width);
   aspect-ratio: 1.5;
-  transform: rotate(8deg);
+  transform:
+    translate(calc(var(--light-x) * 1.5px), calc(var(--light-y) * 1.5px))
+    rotate(8deg);
   z-index: 10;
   pointer-events: none;
-  filter: drop-shadow(2px 3px 6px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(
+    calc(2px - var(--light-x) * 2.5px) calc(3px - var(--light-y) * 2.5px)
+      5px hsla(28, 45%, 10%, 0.45)
+  );
 }
 
 .post-card__stamp-inner {
@@ -745,7 +755,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(160deg, #faf7f0 0%, #f0ebe0 50%, #e6dfd0 100%);
+  background:
+    url("../../../assets/paper-grain.webp") 0 0 / 96px,
+    linear-gradient(160deg, #faf7f0 0%, #f0ebe0 50%, #e6dfd0 100%);
+  background-blend-mode: soft-light;
   /* Scalloped stamp edges - semicircles only on outer border */
   --r: 2.5px; /* radius of scallops */
   --s: 7px; /* spacing between scallops */
@@ -838,47 +851,116 @@
   z-index: 2;
 }
 
-/* ── holographic shimmer on flag ── */
-.post-card__stamp-holo {
-  position: absolute;
-  inset: 12%;
-  border-radius: 3px;
-  pointer-events: none;
-  z-index: 3;
-  background-image:
-    repeating-linear-gradient(
-      115deg,
-      hsl(2, 70%, 70%) 0%,
-      hsl(53, 75%, 65%) 10%,
-      hsl(93, 65%, 65%) 20%,
-      hsl(176, 70%, 70%) 30%,
-      hsl(228, 75%, 70%) 40%,
-      hsl(283, 70%, 70%) 50%,
-      hsl(326, 70%, 65%) 60%,
-      hsl(2, 70%, 70%) 70%
-    ),
-    radial-gradient(
-      farthest-corner circle at var(--pointer-x) var(--pointer-y),
-      hsla(0, 0%, 100%, 0.6) 0%,
-      hsla(0, 0%, 100%, 0.2) 40%,
-      transparent 70%
-    );
-  background-blend-mode: multiply;
-  background-size: 250% 250%, 350% 350%;
-  background-position:
-    calc(20% + var(--pointer-from-left, 0.5) * 60%)
-    calc(20% + var(--pointer-from-top, 0.5) * 60%),
-    calc(var(--pointer-from-left, 0.5) * 100%)
-    calc(var(--pointer-from-top, 0.5) * 100%);
-  filter: brightness(1.1) contrast(1.2) saturate(0.55);
-  mix-blend-mode: color-dodge;
-  opacity: calc(var(--card-opacity, 0) * 0.7);
-  transition: opacity 0.3s ease;
+/* ── the flag: a holographic print, like the dove on a card ──
+   At rest it is a plain printed flag. In the light it turns into foil: the
+   flag's shapes pressed into silver, a spectrum washing over them that shifts
+   with the tilt, and the whole picture sitting a little below the surface
+   film, so it slides against the stamp's frame. */
+.post-card__stamp-window {
+  position: relative;
+  width: 70%;
+  height: 70%;
+  border-radius: 2px;
+  overflow: hidden;
 }
 
-/* enhanced shimmer for higher tiers */
-.post-card[data-tier="3"] .post-card__stamp-holo,
-.post-card[data-tier="4"] .post-card__stamp-holo {
-  filter: brightness(1.2) contrast(1.3) saturate(0.65);
-  opacity: calc(var(--card-opacity, 0) * 0.8);
+.post-card__stamp-depth,
+.post-card__stamp-flag,
+.post-card__stamp-foil,
+.post-card__stamp-foil::before,
+.post-card__stamp-relief,
+.post-card__stamp-relief > *,
+.post-card__stamp-spectrum,
+.post-card__stamp-gloss {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.post-card__stamp-depth {
+  inset: -5%;
+  transform: translate(
+    calc(var(--light-x) * -1.4px),
+    calc(var(--light-y) * -1.4px)
+  );
+}
+
+.post-card__stamp-flag,
+.post-card__stamp-foil::before,
+.post-card__stamp-relief > * {
+  background: var(--flag-url) center / cover no-repeat;
+}
+
+.post-card__stamp-flag {
+  filter: saturate(0.9) contrast(1.05);
+}
+
+/* The holographic rendering of the flag: coloured light on embossed
+   silver, laid over the print with hard-light so it brightens and darkens
+   like metal instead of dyeing the flag. Barely there face-on, it flashes
+   in as the card tilts away. */
+.post-card__stamp-foil {
+  isolation: isolate;
+  filter: brightness(1.35) saturate(1.6);
+  mix-blend-mode: hard-light;
+  opacity: calc(var(--card-opacity) * (0.15 + var(--pointer-from-center) * 0.6));
+}
+
+/* bare silver: the flag's shapes without their inks */
+.post-card__stamp-foil::before {
+  content: "";
+  filter: grayscale(1) contrast(1.25) brightness(1.15);
+}
+
+/* the shapes pressed into the foil, lit from the light's side */
+.post-card__stamp-relief {
+  filter: grayscale(1) contrast(2.5);
+  mix-blend-mode: overlay;
+}
+
+.post-card__stamp-relief > * + * {
+  filter: invert(1);
+  opacity: 0.5;
+  transform: translate(
+    calc(var(--light-x) * -1px),
+    calc(var(--light-y) * -1px)
+  );
+}
+
+/* diffraction: the spectrum lighting the silver slides across as the
+   tilt changes */
+.post-card__stamp-spectrum {
+  background-image: linear-gradient(
+    -60deg,
+    var(--sunpillar-1),
+    var(--sunpillar-2),
+    var(--sunpillar-3),
+    var(--sunpillar-4),
+    var(--sunpillar-5),
+    var(--sunpillar-6),
+    var(--sunpillar-1),
+    var(--sunpillar-2),
+    var(--sunpillar-3)
+  );
+  background-size: 200% 200%;
+  background-position:
+    calc(var(--pointer-from-left) * 100%)
+    calc(var(--pointer-from-top) * 100%);
+  mix-blend-mode: multiply;
+}
+
+/* the surface film: a mirror flash as the light crosses it */
+.post-card__stamp-gloss {
+  background-image: linear-gradient(
+    125deg,
+    hsla(0, 0%, 100%, 0) 32%,
+    hsla(0, 0%, 100%, 0.8) 48%,
+    hsla(0, 0%, 100%, 0) 62%
+  );
+  background-size: 250% 250%;
+  background-position:
+    calc(var(--pointer-from-left) * 100%)
+    calc(var(--pointer-from-top) * 100%);
+  mix-blend-mode: overlay;
+  opacity: var(--card-opacity);
 }

@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import { Link } from "react-router-dom";
-import ReactCountryFlag from "react-country-flag";
 import type { NotFoundPost } from "./useNotFoundPosts";
 import { useHoloTilt } from "./useHoloTilt";
 import tire0marker from "../../../assets/tire0marker.png";
@@ -20,6 +19,12 @@ const tierMarkers = [
 
 function tornMask(seed: number): string {
   return `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.04' numOctaves='4' seed='${seed}'/%3E%3CfeDisplacementMap in='SourceGraphic' scale='15'/%3E%3C/filter%3E%3Crect width='200' height='200' rx='8' filter='url(%23f)' fill='white'/%3E%3C/svg%3E")`;
+}
+
+// same flag set react-country-flag renders elsewhere, but as a URL so the
+// stamp's foil layers can reuse the image as a background
+function flagUrl(countryCode: string): string {
+  return `https://cdn.jsdelivr.net/gh/lipis/flag-icons/flags/4x3/${countryCode.toLowerCase()}.svg`;
 }
 
 function daysBetween(fromStr: string, toStr?: string): number {
@@ -144,20 +149,38 @@ export default function PostCard({
                     </>
                   )}
                   {post.is_found && post.country_code && (
-                    <div className="post-card__stamp">
+                    <div
+                      className="post-card__stamp"
+                      style={
+                        {
+                          "--flag-url": `url(${JSON.stringify(flagUrl(post.country_code))})`,
+                        } as React.CSSProperties
+                      }
+                    >
                       <div className="post-card__stamp-inner">
-                        <ReactCountryFlag
-                          countryCode={post.country_code.toUpperCase()}
-                          svg
-                          style={{
-                            width: "70%",
-                            height: "70%",
-                            objectFit: "cover",
-                            borderRadius: "2px",
-                            filter: "saturate(0.9) contrast(1.05)",
-                          }}
-                        />
-                        <div className="post-card__stamp-holo" />
+                        <div className="post-card__stamp-window">
+                          {/* the flag sits a little below the surface film */}
+                          <div className="post-card__stamp-depth">
+                            <div
+                              className="post-card__stamp-flag"
+                              role="img"
+                              aria-label={post.country_code.toUpperCase()}
+                            />
+                            {active && (
+                              <div
+                                className="post-card__stamp-foil"
+                                aria-hidden="true"
+                              >
+                                <div className="post-card__stamp-relief">
+                                  <div />
+                                  <div />
+                                </div>
+                                <div className="post-card__stamp-spectrum" />
+                              </div>
+                            )}
+                          </div>
+                          {active && <div className="post-card__stamp-gloss" />}
+                        </div>
                       </div>
                     </div>
                   )}
