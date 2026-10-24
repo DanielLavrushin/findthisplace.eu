@@ -152,6 +152,10 @@
     url("../../../assets/paper-grain.webp") 0 0 / 160px,
     var(--frame-bg);
   background-blend-mode: soft-light;
+  /* polished outer edge of the frame */
+  box-shadow:
+    inset 0 0 0 1px hsla(0, 0%, 100%, 0.45),
+    inset 0 0 0 2px hsla(30, 30%, 15%, 0.08);
   isolation: isolate;
 }
 
@@ -615,7 +619,22 @@
 
 /* ── tier themes ── */
 
-/* tier 0: common (< 6 months) — plain stock, gloss only */
+/* Each tier is framed in its own metal: the frame runs a shade deeper than
+   the stock it holds, with two highlight bands like a polished rim. */
+
+/* tier 0: common (< 6 months) — plain stock in an ivory frame, gloss only */
+.post-card[data-tier="0"] {
+  --frame-bg: linear-gradient(
+    155deg,
+    hsl(42, 38%, 95%) 0%,
+    hsl(38, 20%, 83%) 30%,
+    hsl(42, 35%, 93%) 52%,
+    hsl(36, 16%, 79%) 78%,
+    hsl(40, 26%, 88%) 100%
+  );
+  --card-edge: hsl(40, 30%, 88%);
+}
+
 .post-card[data-tier="0"] .post-card__photo-fx,
 .post-card[data-tier="0"] .post-card__foil {
   display: none;
@@ -625,6 +644,15 @@
 .post-card[data-tier="1"] {
   --tier-bg: linear-gradient(135deg, #e8c8a0 0%, #c49264 50%, #a87040 100%);
   --tier-glow: hsl(25, 55%, 55%);
+  --frame-bg: linear-gradient(
+    155deg,
+    hsl(30, 58%, 68%) 0%,
+    hsl(24, 50%, 40%) 30%,
+    hsl(31, 62%, 66%) 52%,
+    hsl(21, 48%, 32%) 78%,
+    hsl(27, 52%, 50%) 100%
+  );
+  --card-edge: hsl(28, 60%, 70%);
   --print-pattern: url("../../../assets/foil-topo.webp");
   --print-opacity: 0.35;
   --foil-sheen: hsla(32, 90%, 78%, 0.9);
@@ -638,6 +666,15 @@
 .post-card[data-tier="2"] {
   --tier-bg: linear-gradient(135deg, #d8dce6 0%, #a8b0bc 50%, #8a929e 100%);
   --tier-glow: hsl(220, 15%, 70%);
+  --frame-bg: linear-gradient(
+    155deg,
+    hsl(220, 16%, 92%) 0%,
+    hsl(216, 10%, 60%) 30%,
+    hsl(220, 20%, 94%) 52%,
+    hsl(214, 9%, 50%) 78%,
+    hsl(218, 12%, 74%) 100%
+  );
+  --card-edge: hsl(218, 20%, 88%);
   --print-pattern: url("../../../assets/foil-topo.webp");
   --print-opacity: 0.4;
   --foil-sheen: hsla(210, 40%, 92%, 0.9);
@@ -653,6 +690,15 @@
 .post-card[data-tier="3"] {
   --tier-bg: linear-gradient(135deg, #f5e6b8 0%, #d4a843 50%, #c49530 100%);
   --tier-glow: hsl(43, 85%, 55%);
+  --frame-bg: linear-gradient(
+    155deg,
+    hsl(49, 95%, 80%) 0%,
+    hsl(41, 78%, 50%) 30%,
+    hsl(51, 100%, 80%) 52%,
+    hsl(37, 72%, 42%) 78%,
+    hsl(45, 88%, 62%) 100%
+  );
+  --card-edge: hsl(47, 100%, 75%);
   --print-pattern: url("../../../assets/foil-topo.webp");
   --print-opacity: 0.35;
   --foil-sheen: hsla(45, 100%, 80%, 0.9);
@@ -678,6 +724,15 @@
     #b080c8 100%
   );
   --tier-glow: hsl(280, 60%, 70%);
+  --frame-bg: linear-gradient(
+    155deg,
+    hsl(288, 48%, 66%) 0%,
+    hsl(274, 46%, 40%) 30%,
+    hsl(292, 55%, 70%) 52%,
+    hsl(270, 44%, 33%) 78%,
+    hsl(283, 44%, 54%) 100%
+  );
+  --card-edge: hsl(285, 60%, 80%);
   --print-pattern: url("../../../assets/foil-nebula.webp");
   --print-opacity: 0.45;
   --foil-sheen: hsla(290, 80%, 88%, 0.9);
