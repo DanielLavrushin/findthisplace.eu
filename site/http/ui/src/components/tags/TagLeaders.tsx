@@ -3,6 +3,7 @@ import {
   Breakdown,
   LeaderboardCard,
   LeaderboardRow,
+  places,
   TIERS,
   tierSegments,
   UserAvatar,
@@ -22,6 +23,8 @@ interface BoardProps {
 function Board({ title, subtitle, users, profile, waitNote }: Readonly<BoardProps>) {
   if (users.length === 0) return null;
 
+  const ranks = places(users.map((u) => u.count));
+
   return (
     <LeaderboardCard
       title={title}
@@ -34,7 +37,7 @@ function Board({ title, subtitle, users, profile, waitNote }: Readonly<BoardProp
         return (
           <LeaderboardRow
             key={u.id}
-            rank={i + 1}
+            rank={ranks[i]}
             to={profile(u.id)}
             avatar={<UserAvatar src={u.avatar_url} login={u.login} />}
             name={u.login}

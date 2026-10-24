@@ -23,9 +23,9 @@ import markerIcon from "../../assets/marker.png";
 import { plural } from "../utils/plural";
 
 export default function AuthorDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const userId = Number(id) || 0;
-  const { data: user, isLoading, error } = useUserDetail(userId);
+  // an id or a nickname
+  const { id = "" } = useParams<{ id: string }>();
+  const { data: user, isLoading, error } = useUserDetail(id);
 
   const unsolvedPosts = useMemo(
     () =>

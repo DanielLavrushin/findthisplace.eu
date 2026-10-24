@@ -37,16 +37,21 @@ export interface UserDetail {
   posts: UserPost[];
 }
 
-async function fetchUserDetail(id: number): Promise<UserDetail> {
-  const res = await fetch(`/api/users/${id}`);
+/** null for no such user: nothing to retry */
+async function fetchUserDetail(ref: string): Promise<UserDetail | null> {
+  const res = await fetch(`/api/users/${encodeURIComponent(ref)}`);
+  if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Failed to fetch user: ${res.status}`);
-  return res.json();
+  const user = await res.json();
+  // "searchers" and "authors" are the lists' addresses, not anyone's nickname
+  return Array.isArray(user) ? null : user;
 }
 
-export function useUserDetail(id: number) {
+/** A profile by id or by nickname: "25377" and "Via_Lactea" are the same page. */
+export function useUserDetail(ref: string) {
   return useQuery({
-    queryKey: ["user", id],
-    queryFn: () => fetchUserDetail(id),
-    enabled: id > 0,
+    queryKey: ["user", ref],
+    queryFn: () => fetchUserDetail(ref),
+    enabled: ref !== "",
   });
 }

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 import {
   Avatar,
   Box,
@@ -40,6 +40,15 @@ export const TIERS: LegendItem[] = tierLabels.map((label, t) => ({
   dotted: t === 0,
   hint: `загадка ждала сыщика ${tierWaits[t]}`,
 }));
+
+/** Places on a board ordered best first; equal values share one: 1, 2, 2, 4. */
+export function places(values: readonly number[]): number[] {
+  const result: number[] = [];
+  values.forEach((v, i) => {
+    result.push(i > 0 && v === values[i - 1] ? result[i - 1] : i + 1);
+  });
+  return result;
+}
 
 /** Counts per tier, lowest first, as the segments of a row's bar. */
 export function tierSegments(counts: readonly number[]): Segment[] {
@@ -101,13 +110,17 @@ function Swatch({ item }: Readonly<{ item: LegendItem }>) {
   );
 }
 
-function Rank({ rank }: Readonly<{ rank: number }>) {
+export function Rank({ rank }: Readonly<{ rank: number }>) {
   const medal = medals[rank - 1];
   return (
     <Box
       sx={{
         width: 24,
         height: 24,
+        // in the middle of a column widened for three-digit places,
+        // and round beside a long name that would squeeze it
+        justifySelf: "center",
+        flexShrink: 0,
         borderRadius: "50%",
         display: "grid",
         placeItems: "center",
@@ -123,7 +136,7 @@ function Rank({ rank }: Readonly<{ rank: number }>) {
 }
 
 /** The value split into its segments, across `share` of the row. */
-function Bar({
+export function Bar({
   segments,
   share,
 }: Readonly<{ segments: Segment[]; share: number }>) {
@@ -158,7 +171,7 @@ function Bar({
 export function Breakdown({
   segments,
   note,
-}: Readonly<{ segments: Segment[]; note?: string }>) {
+}: Readonly<{ segments: Segment[]; note?: ReactNode }>) {
   return (
     <Box sx={{ fontSize: "0.8rem" }}>
       <Box
@@ -282,8 +295,9 @@ export function LeaderboardRow({
 
   const sx = {
     ...rowSx,
-    // the picture column takes what stands in it: an avatar, a flag
-    gridTemplateColumns: `${rank === undefined ? "" : "24px "}auto minmax(0, 1fr)`,
+    // the picture column takes what stands in it: an avatar, a flag;
+    // a long list widens the place column for its three-digit places
+    gridTemplateColumns: `${rank === undefined ? "" : "var(--rank-width, 24px) "}auto minmax(0, 1fr)`,
   };
 
   const row = to ? (
@@ -307,31 +321,37 @@ export function LeaderboardRow({
 
   return (
     <li>
-      {details ? (
-        <Tooltip
-          title={details}
-          placement="top-end"
-          enterDelay={300}
-          enterNextDelay={300}
-          slotProps={{
-            tooltip: {
-              sx: {
-                bgcolor: "background.paper",
-                color: "text.primary",
-                border: "1px solid",
-                borderColor: "divider",
-                boxShadow: 3,
-                p: 1.25,
-              },
-            },
-          }}
-        >
-          {row}
-        </Tooltip>
-      ) : (
-        row
-      )}
+      {details ? <DetailsTooltip title={details}>{row}</DetailsTooltip> : row}
     </li>
+  );
+}
+
+/** A row's breakdown on hover, on a card of its own rather than a dark label. */
+export function DetailsTooltip({
+  title,
+  children,
+}: Readonly<{ title: ReactNode; children: ReactElement }>) {
+  return (
+    <Tooltip
+      title={title}
+      placement="top-end"
+      enterDelay={300}
+      enterNextDelay={300}
+      slotProps={{
+        tooltip: {
+          sx: {
+            bgcolor: "background.paper",
+            color: "text.primary",
+            border: "1px solid",
+            borderColor: "divider",
+            boxShadow: 3,
+            p: 1.25,
+          },
+        },
+      }}
+    >
+      {children}
+    </Tooltip>
   );
 }
 

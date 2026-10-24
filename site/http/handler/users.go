@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -9,6 +12,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type authorResponse struct {
@@ -19,6 +24,8 @@ type authorResponse struct {
 	AuthorPostsTotal  int     `json:"author_posts_total"`
 	AuthorPostsNfound int     `json:"author_posts_nfound"`
 	AvgAuthorTime     float64 `json:"avg_author_time"`
+	FirstPost         string  `json:"first_post,omitempty"`
+	LastPost          string  `json:"last_post,omitempty"`
 }
 
 type searcherResponse struct {
@@ -32,6 +39,34 @@ type searcherResponse struct {
 	FoundTier3      int     `json:"found_tier3"`
 	FoundTier4      int     `json:"found_tier4"`
 	AvgSearchTime   float64 `json:"avg_search_time"`
+	FirstFound      string  `json:"first_found,omitempty"`
+	LastFound       string  `json:"last_found,omitempty"`
+}
+
+// yearLeadersLimit is how many of each year's best make its line
+const yearLeadersLimit = 3
+
+// yearLeaderResponse is a searcher or author among a year's best.
+type yearLeaderResponse struct {
+	Id        int    `json:"id"`
+	Login     string `json:"login"`
+	AvatarUrl string `json:"avatar_url,omitempty"`
+	Count     int    `json:"count"`
+}
+
+// yearResponse is a year of the game: how many places were found, or set
+// as puzzles, and by whom the most.
+type yearResponse struct {
+	Year  int `json:"year"`
+	Count int `json:"count"`
+	// the searchers' year: its finds by tier
+	Tiers []int `json:"tiers,omitempty"`
+	// the authors' year: how many of its puzzles no one has found yet
+	Nfound int `json:"nfound,omitempty"`
+	// how many searchers found anything that year, or authors set anything
+	Users int `json:"users"`
+	// the most first; of equals, the one who got there first
+	Top []yearLeaderResponse `json:"top"`
 }
 
 type userPostResponse struct {
@@ -89,8 +124,10 @@ func countryCodeFromTags(tags interface{}) string {
 
 func (api *API) RegisterUsersApi() {
 	api.mux.HandleFunc("GET /api/users/searchers", api.handleSearchers)
+	api.mux.HandleFunc("GET /api/users/searchers/years", api.handleSearcherYears)
 	api.mux.HandleFunc("GET /api/users/searchers/{limit}", api.handleSearchers)
 	api.mux.HandleFunc("GET /api/users/authors", api.handleAuthors)
+	api.mux.HandleFunc("GET /api/users/authors/years", api.handleAuthorYears)
 	api.mux.HandleFunc("GET /api/users/authors/{limit}", api.handleAuthors)
 	api.mux.HandleFunc("GET /api/users/{id}", api.handleUserDetail)
 }
@@ -153,6 +190,8 @@ func (api *API) handleSearchers(w http.ResponseWriter, r *http.Request) {
 			"found_tier3":     bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$tier", 3}}, 1, 0}}},
 			"found_tier4":     bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$tier", 4}}, 1, 0}}},
 			"avg_search_time": bson.M{"$avg": "$search_time"},
+			"first_found":     bson.M{"$min": "$found_date"},
+			"last_found":      bson.M{"$max": "$found_date"},
 		}},
 		bson.M{"$addFields": bson.M{
 			"found_tiers_total": bson.M{"$add": bson.A{"$found_tier0", "$found_tier1", "$found_tier2", "$found_tier3", "$found_tier4"}},
@@ -187,6 +226,8 @@ func (api *API) handleSearchers(w http.ResponseWriter, r *http.Request) {
 			"found_tier3":       1,
 			"found_tier4":       1,
 			"avg_search_time":   1,
+			"first_found":       1,
+			"last_found":        1,
 		}},
 	)
 
@@ -216,6 +257,8 @@ func (api *API) handleSearchers(w http.ResponseWriter, r *http.Request) {
 			FoundTier3:      intFromBson(doc["found_tier3"]),
 			FoundTier4:      intFromBson(doc["found_tier4"]),
 			AvgSearchTime:   floatFromBson(doc["avg_search_time"]),
+			FirstFound:      dateFromBson(doc["first_found"]),
+			LastFound:       dateFromBson(doc["last_found"]),
 		})
 	}
 
@@ -229,20 +272,12 @@ func (api *API) handleAuthors(w http.ResponseWriter, r *http.Request) {
 		limit, _ = strconv.Atoi(v)
 	}
 
-	hiddenTags, _ := api.settings.GetHiddenTags(r.Context())
-
-	// Build pipeline to compute author stats dynamically, filtering hidden tags
+	// Build pipeline to compute author stats dynamically, without the posts an
+	// admin has hidden, so an author's unsolved count matches the profile
 	pipeline := bson.A{
 		bson.M{"$match": bson.M{"user_id": bson.M{"$exists": true, "$ne": 0}}},
 	}
-
-	if len(hiddenTags) > 0 {
-		tagsBson := make(bson.A, len(hiddenTags))
-		for i, t := range hiddenTags {
-			tagsBson[i] = t
-		}
-		pipeline = append(pipeline, bson.M{"$match": bson.M{"tags": bson.M{"$nin": tagsBson}}})
-	}
+	pipeline = append(pipeline, api.hiddenPostStages(r.Context())...)
 
 	pipeline = append(pipeline,
 		bson.M{"$lookup": bson.M{
@@ -268,6 +303,8 @@ func (api *API) handleAuthors(w http.ResponseWriter, r *http.Request) {
 			"author_posts_total": bson.M{"$sum": 1},
 			"author_posts_found": bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$ftp.is_found", true}}, 1, 0}}},
 			"avg_author_time":    bson.M{"$avg": "$author_time"},
+			"first_post":         bson.M{"$min": "$created"},
+			"last_post":          bson.M{"$max": "$created"},
 		}},
 		bson.M{"$match": bson.M{"author_posts_total": bson.M{"$gt": 0}}},
 		bson.M{"$sort": bson.M{"author_posts_total": -1}},
@@ -295,6 +332,8 @@ func (api *API) handleAuthors(w http.ResponseWriter, r *http.Request) {
 			"author_posts_found": 1,
 			"author_posts_total": 1,
 			"avg_author_time":    1,
+			"first_post":         1,
+			"last_post":          1,
 		}},
 	)
 
@@ -323,6 +362,8 @@ func (api *API) handleAuthors(w http.ResponseWriter, r *http.Request) {
 			AuthorPostsTotal:  total,
 			AuthorPostsNfound: total - found,
 			AvgAuthorTime:     floatFromBson(doc["avg_author_time"]),
+			FirstPost:         dateFromBson(doc["first_post"]),
+			LastPost:          dateFromBson(doc["last_post"]),
 		})
 	}
 
@@ -330,11 +371,225 @@ func (api *API) handleAuthors(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(results)
 }
 
-func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
-	idStr := r.PathValue("id")
-	id, err := strconv.Atoi(idStr)
+// yearStart is when the year under way began. The year boards end there:
+// a year still running would be measured against whole ones.
+func yearStart() time.Time {
+	return time.Date(time.Now().UTC().Year(), time.January, 1, 0, 0, 0, 0, time.UTC)
+}
+
+// topOfYear picks a year's best out of its {year, user} groups.
+var topOfYear = bson.M{"$topN": bson.M{
+	"n":      yearLeadersLimit,
+	"sortBy": bson.D{{Key: "count", Value: -1}, {Key: "last", Value: 1}},
+	"output": bson.M{"id": "$_id.user", "count": "$count"},
+}}
+
+func (api *API) handleSearcherYears(w http.ResponseWriter, r *http.Request) {
+	userGroup := bson.M{
+		"_id":   bson.M{"year": bson.M{"$year": "$ftp.found_date"}, "user": "$ftp.found_by_id"},
+		"count": bson.M{"$sum": 1},
+		"last":  bson.M{"$max": "$ftp.found_date"},
+	}
+	yearGroup := bson.M{
+		"_id":   "$_id.year",
+		"count": bson.M{"$sum": "$count"},
+		"users": bson.M{"$sum": 1},
+		"top":   topOfYear,
+	}
+	for t := 0; t <= len(tierBounds); t++ {
+		tier := fmt.Sprintf("tier%d", t)
+		userGroup[tier] = bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$tier", t}}, 1, 0}}}
+		yearGroup[tier] = bson.M{"$sum": "$" + tier}
+	}
+
+	pipeline := api.hiddenPostStages(r.Context())
+	pipeline = append(pipeline,
+		bson.M{"$lookup": bson.M{
+			"from":         "ftp_posts",
+			"localField":   "_id",
+			"foreignField": "_id",
+			"as":           "ftp",
+		}},
+		bson.M{"$unwind": "$ftp"},
+		bson.M{"$match": bson.M{
+			"ftp.is_found":    true,
+			"ftp.found_by_id": bson.M{"$gt": 0},
+			"ftp.found_date":  bson.M{"$type": "date", "$lt": yearStart()},
+		}},
+		bson.M{"$addFields": bson.M{"search_time": bson.M{"$divide": bson.A{
+			bson.M{"$subtract": bson.A{"$ftp.found_date", "$created"}},
+			1000,
+		}}}},
+		bson.M{"$addFields": bson.M{"tier": tierExpr("$search_time")}},
+		bson.M{"$group": userGroup},
+		bson.M{"$group": yearGroup},
+		bson.M{"$sort": bson.M{"_id": -1}},
+	)
+
+	years, err := api.aggregateYears(r.Context(), pipeline, func(doc bson.M, y *yearResponse) {
+		y.Tiers = make([]int, len(tierBounds)+1)
+		for t := range y.Tiers {
+			y.Tiers[t] = intFromBson(doc[fmt.Sprintf("tier%d", t)])
+		}
+	})
 	if err != nil {
-		http.Error(w, "invalid user id", http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	setJsonHeader(w)
+	json.NewEncoder(w).Encode(years)
+}
+
+func (api *API) handleAuthorYears(w http.ResponseWriter, r *http.Request) {
+	pipeline := api.hiddenPostStages(r.Context())
+	pipeline = append(pipeline,
+		bson.M{"$match": bson.M{
+			"user_id": bson.M{"$gt": 0},
+			"created": bson.M{"$type": "date", "$lt": yearStart()},
+		}},
+		bson.M{"$lookup": bson.M{
+			"from":         "ftp_posts",
+			"localField":   "_id",
+			"foreignField": "_id",
+			"as":           "ftp",
+		}},
+		bson.M{"$unwind": bson.M{
+			"path":                       "$ftp",
+			"preserveNullAndEmptyArrays": true,
+		}},
+		bson.M{"$group": bson.M{
+			"_id":   bson.M{"year": bson.M{"$year": "$created"}, "user": "$user_id"},
+			"count": bson.M{"$sum": 1},
+			"last":  bson.M{"$max": "$created"},
+			"nfound": bson.M{"$sum": bson.M{"$cond": bson.A{
+				bson.M{"$eq": bson.A{"$ftp.is_found", true}}, 0, 1,
+			}}},
+		}},
+		bson.M{"$group": bson.M{
+			"_id":    "$_id.year",
+			"count":  bson.M{"$sum": "$count"},
+			"nfound": bson.M{"$sum": "$nfound"},
+			"users":  bson.M{"$sum": 1},
+			"top":    topOfYear,
+		}},
+		bson.M{"$sort": bson.M{"_id": -1}},
+	)
+
+	years, err := api.aggregateYears(r.Context(), pipeline, func(doc bson.M, y *yearResponse) {
+		y.Nfound = intFromBson(doc["nfound"])
+	})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	setJsonHeader(w)
+	json.NewEncoder(w).Encode(years)
+}
+
+// aggregateYears runs a pipeline that groups by year, with each year's top,
+// and names the leaders; fill reads what else a year's line carries.
+func (api *API) aggregateYears(ctx context.Context, pipeline bson.A, fill func(bson.M, *yearResponse)) ([]yearResponse, error) {
+	cursor, err := api.store.DirtyPosts.Aggregate(ctx, pipeline)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var raw []bson.M
+	if err := cursor.All(ctx, &raw); err != nil {
+		return nil, err
+	}
+
+	years := make([]yearResponse, 0, len(raw))
+	ids := bson.A{}
+	for _, doc := range raw {
+		y := yearResponse{
+			Year:  intFromBson(doc["_id"]),
+			Count: intFromBson(doc["count"]),
+			Users: intFromBson(doc["users"]),
+		}
+		top, _ := doc["top"].(bson.A)
+		for _, t := range top {
+			leader, _ := t.(bson.M)
+			y.Top = append(y.Top, yearLeaderResponse{
+				Id:    intFromBson(leader["id"]),
+				Count: intFromBson(leader["count"]),
+			})
+			ids = append(ids, leader["id"])
+		}
+		fill(doc, &y)
+		years = append(years, y)
+	}
+
+	if len(ids) == 0 {
+		return years, nil
+	}
+	users, err := api.store.DirtyUsers.Find(ctx, bson.M{"_id": bson.M{"$in": ids}},
+		options.Find().SetProjection(bson.M{"login": 1, "avatar_url": 1}))
+	if err != nil {
+		return nil, err
+	}
+	defer users.Close(ctx)
+
+	var profiles []bson.M
+	if err := users.All(ctx, &profiles); err != nil {
+		return nil, err
+	}
+	byId := make(map[int]bson.M, len(profiles))
+	for _, p := range profiles {
+		byId[intFromBson(p["_id"])] = p
+	}
+	for i := range years {
+		for j := range years[i].Top {
+			leader := &years[i].Top[j]
+			leader.Login = strFromBson(byId[leader.Id]["login"])
+			leader.AvatarUrl = strFromBson(byId[leader.Id]["avatar_url"])
+		}
+	}
+	return years, nil
+}
+
+func dateFromBson(v interface{}) string {
+	if d, ok := v.(primitive.DateTime); ok {
+		return d.Time().UTC().Format(time.RFC3339)
+	}
+	return ""
+}
+
+// userIdFrom reads whose profile a path asks for: an id, or a nickname in
+// any case, so /searchers/25377 and /searchers/via_lactea are the same page.
+// Zero for no such user.
+func (api *API) userIdFrom(ctx context.Context, ref string) (int, error) {
+	if id, err := strconv.Atoi(ref); err == nil {
+		// a nickname can be all digits too: the number is an id only if one is taken
+		n, err := api.store.DirtyUsers.CountDocuments(ctx, bson.M{"_id": id})
+		if err != nil || n > 0 {
+			return id, err
+		}
+	}
+
+	var user struct {
+		Id int `bson:"_id"`
+	}
+	err := api.store.DirtyUsers.FindOne(ctx, bson.M{"login": ref}, options.FindOne().
+		SetProjection(bson.M{"_id": 1}).
+		SetCollation(&options.Collation{Locale: "en", Strength: 2})).Decode(&user)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return 0, nil
+	}
+	return user.Id, err
+}
+
+func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
+	id, err := api.userIdFrom(r.Context(), r.PathValue("id"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if id == 0 {
+		http.Error(w, "user not found", http.StatusNotFound)
 		return
 	}
 

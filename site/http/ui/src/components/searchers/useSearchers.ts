@@ -11,6 +11,19 @@ export interface Searcher {
   found_tier3: number;
   found_tier4: number;
   avg_search_time: number;
+  first_found?: string;
+  last_found?: string;
+}
+
+/** A searcher's finds by tier, lowest first. */
+export function tierCounts(s: Searcher): number[] {
+  return [
+    s.found_tier0,
+    s.found_tier1,
+    s.found_tier2,
+    s.found_tier3,
+    s.found_tier4,
+  ];
 }
 
 async function fetchSearchers(limit?: number): Promise<Searcher[]> {

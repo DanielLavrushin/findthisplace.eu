@@ -1,28 +1,21 @@
-import { Searcher, useSearchers } from "./useSearchers";
+import { tierCounts, useSearchers } from "./useSearchers";
 import {
   Breakdown,
   LeaderboardCard,
   LeaderboardRow,
+  places,
   TIERS,
   tierSegments,
   UserAvatar,
 } from "../leaderboard/Leaderboard";
 import { formatDuration } from "../../utils/formatDuration";
 
-function tierCounts(s: Searcher): number[] {
-  return [
-    s.found_tier0,
-    s.found_tier1,
-    s.found_tier2,
-    s.found_tier3,
-    s.found_tier4,
-  ];
-}
-
 export default function TopSearchers() {
   const { data: searchers = [], isPending } = useSearchers(10);
 
   if (!isPending && searchers.length === 0) return null;
+
+  const ranks = places(searchers.map((s) => s.found_tiers_total));
 
   return (
     <LeaderboardCard
@@ -38,7 +31,7 @@ export default function TopSearchers() {
         return (
           <LeaderboardRow
             key={s.id}
-            rank={i + 1}
+            rank={ranks[i]}
             to={`/searchers/${s.id}`}
             avatar={<UserAvatar src={s.avatar_url} login={s.login} />}
             name={s.login}

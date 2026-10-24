@@ -36,9 +36,9 @@ const tierLabels = ["< 6 мес", "6м–1г", "1–2г", "2–5л", "5+ лет"
 const tierColors = ["#666666", "#B87333", "#A8A8A8", "#F5A623", "#B044AA"];
 
 export default function SearcherDetailPage() {
-  const { id } = useParams<{ id: string }>();
-  const userId = Number(id) || 0;
-  const { data: user, isLoading, error } = useUserDetail(userId);
+  // an id or a nickname
+  const { id = "" } = useParams<{ id: string }>();
+  const { data: user, isLoading, error } = useUserDetail(id);
   const [activeTier, setActiveTier] = useState<number | null>(null);
 
   const foundPosts = useMemo(() => {

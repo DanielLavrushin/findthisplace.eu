@@ -73,6 +73,8 @@ export function StatCard({
             fontSize: "1.1rem",
             fontWeight: 800,
             lineHeight: 1.2,
+            // a long login has no spaces to wrap at: break it rather than cut it off
+            overflowWrap: "anywhere",
             background: gradient,
             backgroundClip: "text",
             WebkitBackgroundClip: "text",

@@ -8,6 +8,7 @@ const words: Record<string, [string, string, string]> = {
   место: ["место", "места", "мест"],
   автор: ["автор", "автора", "авторов"],
   сыщик: ["сыщик", "сыщика", "сыщиков"],
+  раз: ["раз", "раза", "раз"],
 };
 
 export function plural(n: number, key: string, wordOnly = false): string {

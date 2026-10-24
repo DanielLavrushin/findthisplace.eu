@@ -4,20 +4,11 @@ import { Country } from "./useCountries";
 import StatCards, { StatCardProps } from "../stats/StatCards";
 import { countryName, formatSolveTime } from "../posts/cardUtils";
 import { COUNTRY_COUNT } from "../../utils/countries";
+import { pick } from "../../utils/pick";
 import { plural } from "../../utils/plural";
 
 // an average over fewer finds says more about the finds than the country
 const MIN_FINDS_FOR_AVERAGE = 10;
-
-function pick(
-  countries: Country[],
-  better: (a: Country, b: Country) => boolean,
-): Country | undefined {
-  return countries.reduce<Country | undefined>(
-    (best, c) => (best === undefined || better(c, best) ? c : best),
-    undefined,
-  );
-}
 
 function countryCard(
   c: Country,
