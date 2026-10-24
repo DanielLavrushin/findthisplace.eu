@@ -26,10 +26,12 @@ class Spring {
   value: number;
   target: number;
   private last: number;
-  private stiffness = FOLLOW.stiffness;
-  private damping = FOLLOW.damping;
-  private invMass = 1;
-  private invMassRecovery = 0;
+  private cfg = FOLLOW;
+  // during a soft change: the previous spring, still acting while it hands
+  // over to the new one
+  private previous: { target: number; cfg: SpringConfig } | null = null;
+  private handover = 1;
+  private handoverRate = 0;
 
   constructor(
     value: number,
@@ -39,35 +41,49 @@ class Spring {
   }
 
   to(target: number, cfg: SpringConfig, soft = 0) {
-    this.target = target;
-    this.stiffness = cfg.stiffness;
-    this.damping = cfg.damping;
     if (soft > 0) {
-      // start with infinite mass and recover over `soft` seconds, so the
-      // change of direction eases in instead of jerking
-      this.invMass = 0;
-      this.invMassRecovery = 1 / (soft * 60);
+      // Hand over from the current spring across `soft` seconds: the change
+      // eases in, and motion already under way keeps being braked by the old
+      // spring. (svelte's soft mode suspends every force instead, so a card
+      // still swinging when the pointer leaves coasts far past the angles
+      // the pointer itself can reach.)
+      this.previous = { target: this.target, cfg: this.cfg };
+      this.handover = 0;
+      this.handoverRate = 1 / (soft * 60);
     } else {
       // a pointer driving the card again gets full response right away
-      this.invMass = 1;
+      this.previous = null;
     }
+    this.target = target;
+    this.cfg = cfg;
   }
 
   /** Advances by `dt` frames; returns false once settled on the target. */
   step(dt: number): boolean {
-    this.invMass = Math.min(this.invMass + this.invMassRecovery, 1);
-    const delta = this.target - this.value;
     const velocity = (this.value - this.last) / dt;
-    const acceleration =
-      (this.stiffness * delta - this.damping * velocity) * this.invMass;
+    let acceleration = this.pull(this.target, this.cfg, velocity);
+    if (this.previous) {
+      this.handover = Math.min(this.handover + this.handoverRate * dt, 1);
+      const old = this.pull(this.previous.target, this.previous.cfg, velocity);
+      acceleration = old + (acceleration - old) * this.handover;
+      if (this.handover === 1) this.previous = null;
+    }
     const d = (velocity + acceleration) * dt;
     this.last = this.value;
-    if (Math.abs(d) < this.precision && Math.abs(delta) < this.precision) {
+    if (
+      Math.abs(d) < this.precision &&
+      Math.abs(this.target - this.value) < this.precision
+    ) {
       this.value = this.last = this.target;
+      this.previous = null;
       return false;
     }
     this.value += d;
     return true;
+  }
+
+  private pull(target: number, cfg: SpringConfig, velocity: number) {
+    return cfg.stiffness * (target - this.value) - cfg.damping * velocity;
   }
 }
 
@@ -78,8 +94,6 @@ function makeSprings() {
     glareX: new Spring(50),
     glareY: new Spring(50),
     glareO: new Spring(0, 0.001),
-    backgroundX: new Spring(50),
-    backgroundY: new Spring(50),
     scale: new Spring(1, 0.0005),
     lift: new Spring(0),
   };
@@ -95,26 +109,17 @@ function round(val: number, precision = 3) {
   return Number.parseFloat(val.toFixed(precision));
 }
 
-function adjust(
-  val: number,
-  fromMin: number,
-  fromMax: number,
-  toMin: number,
-  toMax: number,
-) {
-  return round(
-    toMin + ((val - fromMin) / (fromMax - fromMin)) * (toMax - toMin),
-  );
-}
-
 function prefersReducedMotion() {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 }
 
 /** Writes the spring state into the CSS custom properties the card reads. */
 function paint(el: HTMLElement, s: Springs) {
-  const gx = s.glareX.value;
-  const gy = s.glareY.value;
+  // The light overshoots with its spring; keep it on the card. The foil
+  // gradients are positioned from it, and past the card's edge they would
+  // slide their own edges into view.
+  const gx = clamp(s.glareX.value);
+  const gy = clamp(s.glareY.value);
   const st = el.style;
   st.setProperty("--pointer-x", `${round(gx)}%`);
   st.setProperty("--pointer-y", `${round(gy)}%`);
@@ -126,13 +131,11 @@ function paint(el: HTMLElement, s: Springs) {
     `${round(clamp(Math.hypot(gx - 50, gy - 50) / 50, 0, 1))}`,
   );
   // light direction from the card centre, -1..1 (drives the photo relief)
-  st.setProperty("--light-x", `${round(clamp((gx - 50) / 50, -1, 1))}`);
-  st.setProperty("--light-y", `${round(clamp((gy - 50) / 50, -1, 1))}`);
+  st.setProperty("--light-x", `${round((gx - 50) / 50)}`);
+  st.setProperty("--light-y", `${round((gy - 50) / 50)}`);
   st.setProperty("--card-opacity", `${round(clamp(s.glareO.value, 0, 1))}`);
   st.setProperty("--rotate-x", `${round(s.rotateX.value)}deg`);
   st.setProperty("--rotate-y", `${round(s.rotateY.value)}deg`);
-  st.setProperty("--background-x", `${round(s.backgroundX.value)}%`);
-  st.setProperty("--background-y", `${round(s.backgroundY.value)}%`);
   st.setProperty("--card-scale", `${round(s.scale.value, 4)}`);
   st.setProperty("--translate-y", `${round(s.lift.value)}px`);
 }
@@ -200,8 +203,6 @@ export function useHoloTilt<T extends HTMLElement>() {
       s.glareX.to(px, FOLLOW);
       s.glareY.to(py, FOLLOW);
       s.glareO.to(1, FOLLOW);
-      s.backgroundX.to(adjust(px, 0, 100, 37, 63), FOLLOW);
-      s.backgroundY.to(adjust(py, 0, 100, 33, 67), FOLLOW);
       s.scale.to(still ? 1 : 1.05, LIFT);
       s.lift.to(still ? 0 : -6, LIFT);
       kick();
@@ -220,8 +221,6 @@ export function useHoloTilt<T extends HTMLElement>() {
       s.glareX.to(50, SETTLE, 0.6);
       s.glareY.to(50, SETTLE, 0.6);
       s.glareO.to(0, FADE, 0.6);
-      s.backgroundX.to(50, SETTLE, 0.6);
-      s.backgroundY.to(50, SETTLE, 0.6);
       s.scale.to(1, LIFT);
       s.lift.to(0, LIFT);
       kick();

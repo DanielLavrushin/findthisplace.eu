@@ -34,8 +34,6 @@
   --translate-y: 0px;
   --rotate-x: 0deg;
   --rotate-y: 0deg;
-  --background-x: 50%;
-  --background-y: 50%;
 
   /* printed card */
   --frame: 3.6cqw;
@@ -370,10 +368,12 @@
   background-size:
     cover,
     220% 220%;
+  /* bands slide against the light; kept within 0–100% so the gradient's
+     own edge never enters the photo */
   background-position:
     center,
-    calc(((50% - var(--background-x)) * 2.6) + 50%)
-      calc(((50% - var(--background-y)) * 3.5) + 50%);
+    calc(84% - var(--pointer-from-left) * 68%)
+      calc(100% - var(--pointer-from-top) * 100%);
   filter: brightness(0.65) contrast(1.5) saturate(1.5);
   mix-blend-mode: color-dodge;
   opacity: calc(var(--card-opacity) * var(--photo-holo));
