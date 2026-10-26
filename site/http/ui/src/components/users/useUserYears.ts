@@ -15,7 +15,8 @@ export interface UserYear {
   count: number;
   /** the searchers' year: its finds by tier, lowest first */
   tiers?: number[];
-  /** the authors' year: its puzzles no one has found yet */
+  /** the authors' year: its puzzles found, and those no one has found yet */
+  found?: number;
   nfound?: number;
   /** how many searchers found anything, or authors set anything */
   users: number;

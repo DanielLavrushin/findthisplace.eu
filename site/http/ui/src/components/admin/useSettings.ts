@@ -9,7 +9,7 @@ export interface Setting {
 const PROTECTED_ADMIN_ID = 25377;
 
 async function fetchSettings(): Promise<Setting[]> {
-  const res = await fetch("/api/settings");
+  const res = await fetch("/api/admin/settings");
   if (!res.ok) throw new Error(`Failed to fetch settings: ${res.status}`);
   return (await res.json()) ?? [];
 }
@@ -23,7 +23,7 @@ async function updateSetting(setting: Setting): Promise<void> {
     }
   }
 
-  const res = await fetch("/api/settings", {
+  const res = await fetch("/api/admin/settings", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(setting),
@@ -31,9 +31,10 @@ async function updateSetting(setting: Setting): Promise<void> {
   if (!res.ok) throw new Error(`Failed to update setting: ${res.status}`);
 }
 
+// not ["settings"]: that's the footer's public subset
 export function useSettings() {
   return useQuery({
-    queryKey: ["settings"],
+    queryKey: ["admin", "settings"],
     queryFn: fetchSettings,
   });
 }
@@ -44,7 +45,7 @@ export function useUpdateSetting() {
   return useMutation({
     mutationFn: updateSetting,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["settings"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "settings"] });
     },
   });
 }

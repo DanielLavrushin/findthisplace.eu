@@ -13,7 +13,7 @@ export default function AuthorYears({
       years={years}
       loading={loading}
       profile={(id) => `/authors/${id}`}
-      segments={(y) => puzzleSegments(y.count - (y.nfound ?? 0), y.nfound ?? 0)}
+      segments={(y) => puzzleSegments(y.found ?? 0, y.nfound ?? 0)}
       note={(y) => `авторов: ${y.users}`}
       legend={[FOUND, NOT_FOUND]}
     />

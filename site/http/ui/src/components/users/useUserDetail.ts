@@ -9,6 +9,8 @@ export interface UserPost {
   gender: string;
   created_date: string;
   is_found: boolean;
+  /** an author's puzzle still on the not-found page */
+  waiting?: boolean;
   found_date?: string;
   found_by_id?: number;
   found_by?: string;

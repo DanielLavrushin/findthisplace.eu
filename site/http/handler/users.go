@@ -61,7 +61,9 @@ type yearResponse struct {
 	Count int `json:"count"`
 	// the searchers' year: its finds by tier
 	Tiers []int `json:"tiers,omitempty"`
-	// the authors' year: how many of its puzzles no one has found yet
+	// the authors' year: how many of its puzzles were found, and how many no
+	// one has found yet; the two can fall short of Count, see waitingExpr
+	Found  int `json:"found,omitempty"`
 	Nfound int `json:"nfound,omitempty"`
 	// how many searchers found anything that year, or authors set anything
 	Users int `json:"users"`
@@ -78,6 +80,7 @@ type userPostResponse struct {
 	Gender       string  `json:"gender"`
 	CreatedDate  string  `json:"created_date"`
 	IsFound      bool    `json:"is_found"`
+	Waiting      bool    `json:"waiting,omitempty"` // an author's puzzle /not-found lists
 	FoundDate    string  `json:"found_date,omitempty"`
 	FoundByID    int     `json:"found_by_id,omitempty"`
 	FoundBy      string  `json:"found_by,omitempty"`
@@ -273,7 +276,7 @@ func (api *API) handleAuthors(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Build pipeline to compute author stats dynamically, without the posts an
-	// admin has hidden, so an author's unsolved count matches the profile
+	// admin has hidden, so an author's unsolved count matches /not-found and the profile
 	pipeline := bson.A{
 		bson.M{"$match": bson.M{"user_id": bson.M{"$exists": true, "$ne": 0}}},
 	}
@@ -302,9 +305,11 @@ func (api *API) handleAuthors(w http.ResponseWriter, r *http.Request) {
 			"_id":                "$user_id",
 			"author_posts_total": bson.M{"$sum": 1},
 			"author_posts_found": bson.M{"$sum": bson.M{"$cond": bson.A{bson.M{"$eq": bson.A{"$ftp.is_found", true}}, 1, 0}}},
-			"avg_author_time":    bson.M{"$avg": "$author_time"},
-			"first_post":         bson.M{"$min": "$created"},
-			"last_post":          bson.M{"$max": "$created"},
+			// not total - found: a post neither found nor waiting sets no one a puzzle
+			"author_posts_nfound": bson.M{"$sum": bson.M{"$cond": bson.A{waitingExpr, 1, 0}}},
+			"avg_author_time":     bson.M{"$avg": "$author_time"},
+			"first_post":          bson.M{"$min": "$created"},
+			"last_post":           bson.M{"$max": "$created"},
 		}},
 		bson.M{"$match": bson.M{"author_posts_total": bson.M{"$gt": 0}}},
 		bson.M{"$sort": bson.M{"author_posts_total": -1}},
@@ -326,14 +331,15 @@ func (api *API) handleAuthors(w http.ResponseWriter, r *http.Request) {
 			"preserveNullAndEmptyArrays": true,
 		}},
 		bson.M{"$project": bson.M{
-			"_id":                1,
-			"login":              "$user.login",
-			"avatar_url":         "$user.avatar_url",
-			"author_posts_found": 1,
-			"author_posts_total": 1,
-			"avg_author_time":    1,
-			"first_post":         1,
-			"last_post":          1,
+			"_id":                 1,
+			"login":               "$user.login",
+			"avatar_url":          "$user.avatar_url",
+			"author_posts_found":  1,
+			"author_posts_total":  1,
+			"author_posts_nfound": 1,
+			"avg_author_time":     1,
+			"first_post":          1,
+			"last_post":           1,
 		}},
 	)
 
@@ -352,15 +358,13 @@ func (api *API) handleAuthors(w http.ResponseWriter, r *http.Request) {
 
 	results := make([]authorResponse, 0, len(raw))
 	for _, doc := range raw {
-		found := intFromBson(doc["author_posts_found"])
-		total := intFromBson(doc["author_posts_total"])
 		results = append(results, authorResponse{
 			Id:                intFromBson(doc["_id"]),
 			Login:             strFromBson(doc["login"]),
 			AvatarUrl:         strFromBson(doc["avatar_url"]),
-			AuthorPostsFound:  found,
-			AuthorPostsTotal:  total,
-			AuthorPostsNfound: total - found,
+			AuthorPostsFound:  intFromBson(doc["author_posts_found"]),
+			AuthorPostsTotal:  intFromBson(doc["author_posts_total"]),
+			AuthorPostsNfound: intFromBson(doc["author_posts_nfound"]),
 			AvgAuthorTime:     floatFromBson(doc["avg_author_time"]),
 			FirstPost:         dateFromBson(doc["first_post"]),
 			LastPost:          dateFromBson(doc["last_post"]),
@@ -462,13 +466,15 @@ func (api *API) handleAuthorYears(w http.ResponseWriter, r *http.Request) {
 			"_id":   bson.M{"year": bson.M{"$year": "$created"}, "user": "$user_id"},
 			"count": bson.M{"$sum": 1},
 			"last":  bson.M{"$max": "$created"},
-			"nfound": bson.M{"$sum": bson.M{"$cond": bson.A{
-				bson.M{"$eq": bson.A{"$ftp.is_found", true}}, 0, 1,
+			"found": bson.M{"$sum": bson.M{"$cond": bson.A{
+				bson.M{"$eq": bson.A{"$ftp.is_found", true}}, 1, 0,
 			}}},
+			"nfound": bson.M{"$sum": bson.M{"$cond": bson.A{waitingExpr, 1, 0}}},
 		}},
 		bson.M{"$group": bson.M{
 			"_id":    "$_id.year",
 			"count":  bson.M{"$sum": "$count"},
+			"found":  bson.M{"$sum": "$found"},
 			"nfound": bson.M{"$sum": "$nfound"},
 			"users":  bson.M{"$sum": 1},
 			"top":    topOfYear,
@@ -477,6 +483,7 @@ func (api *API) handleAuthorYears(w http.ResponseWriter, r *http.Request) {
 	)
 
 	years, err := api.aggregateYears(r.Context(), pipeline, func(doc bson.M, y *yearResponse) {
+		y.Found = intFromBson(doc["found"])
 		y.Nfound = intFromBson(doc["nfound"])
 	})
 	if err != nil {
@@ -657,24 +664,22 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 	}
 
 	doc := docs[0]
-	authorFound := intFromBson(doc["author_posts_found"])
-	authorTotal := intFromBson(doc["author_posts_total"])
 
+	// AuthorPostsNfound is counted off the posts below, as the authors list counts it
 	result := userDetailResponse{
-		Id:                intFromBson(doc["_id"]),
-		Login:             strFromBson(doc["login"]),
-		AvatarUrl:         strFromBson(doc["avatar_url"]),
-		AuthorPostsFound:  authorFound,
-		AuthorPostsTotal:  authorTotal,
-		AuthorPostsNfound: authorTotal - authorFound,
-		AvgAuthorTime:     floatFromBson(doc["avg_author_time"]),
-		FoundTiersTotal:   intFromBson(doc["found_tiers_total"]),
-		FoundTier0:        intFromBson(doc["found_tier0"]),
-		FoundTier1:        intFromBson(doc["found_tier1"]),
-		FoundTier2:        intFromBson(doc["found_tier2"]),
-		FoundTier3:        intFromBson(doc["found_tier3"]),
-		FoundTier4:        intFromBson(doc["found_tier4"]),
-		AvgSearchTime:     floatFromBson(doc["avg_search_time"]),
+		Id:               intFromBson(doc["_id"]),
+		Login:            strFromBson(doc["login"]),
+		AvatarUrl:        strFromBson(doc["avatar_url"]),
+		AuthorPostsFound: intFromBson(doc["author_posts_found"]),
+		AuthorPostsTotal: intFromBson(doc["author_posts_total"]),
+		AvgAuthorTime:    floatFromBson(doc["avg_author_time"]),
+		FoundTiersTotal:  intFromBson(doc["found_tiers_total"]),
+		FoundTier0:       intFromBson(doc["found_tier0"]),
+		FoundTier1:       intFromBson(doc["found_tier1"]),
+		FoundTier2:       intFromBson(doc["found_tier2"]),
+		FoundTier3:       intFromBson(doc["found_tier3"]),
+		FoundTier4:       intFromBson(doc["found_tier4"]),
+		AvgSearchTime:    floatFromBson(doc["avg_search_time"]),
 	}
 
 	// Fetch posts created by this user
@@ -730,6 +735,7 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 			"longitude":      "$ftp.longitude",
 			"latitude":       "$ftp.latitude",
 			"tags":           1,
+			"waiting":        waitingExpr,
 		}},
 		bson.M{"$sort": bson.M{"created": -1}},
 	)
@@ -826,6 +832,10 @@ func (api *API) handleUserDetail(w http.ResponseWriter, r *http.Request) {
 		}
 		if v, ok := p["is_found"].(bool); ok {
 			post.IsFound = v
+		}
+		post.Waiting, _ = p["waiting"].(bool)
+		if post.Waiting {
+			result.AuthorPostsNfound++
 		}
 		var createdTime time.Time
 		if created, ok := p["created"].(primitive.DateTime); ok {

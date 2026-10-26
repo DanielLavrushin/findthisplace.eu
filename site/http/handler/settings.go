@@ -3,26 +3,41 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"slices"
 
 	"github.com/findthisplace.eu/settings"
 )
 
+// publicSettings are the ones anyone may read: the footer shows when the
+// grabber last ran and how it went. Admin ids and the hidden posts and tags
+// are for admins only.
+var publicSettings = []string{settings.LastGrabberTime, settings.LastGrabberStatus}
+
 func (api *API) RegisterSettingsApi() {
-	api.mux.HandleFunc("/api/settings", api.handleSettings)
+	api.mux.HandleFunc("GET /api/settings", api.handlePublicSettings)
+	api.mux.HandleFunc("GET /api/admin/settings", api.handleGetSettings)
+	api.mux.HandleFunc("POST /api/admin/settings", api.handleUpdateSetting)
 }
 
-func (api *API) handleSettings(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		api.handleGetSettings(w, r)
-	case http.MethodPost:
-		api.handleUpdateSetting(w, r)
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+func (api *API) handlePublicSettings(w http.ResponseWriter, r *http.Request) {
+	results, err := api.settings.GetAll(r.Context())
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
+	results = slices.DeleteFunc(results, func(s settings.Setting) bool {
+		return !slices.Contains(publicSettings, s.Name)
+	})
+
+	setJsonHeader(w)
+	json.NewEncoder(w).Encode(results)
 }
 
 func (api *API) handleGetSettings(w http.ResponseWriter, r *http.Request) {
+	if !api.requireAdmin(w, r) {
+		return
+	}
+
 	results, err := api.settings.GetAll(r.Context())
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)

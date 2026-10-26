@@ -9,7 +9,6 @@ import {
 } from "./useHoloTilt";
 import HoloCard from "./HoloCard";
 import CardBack from "./CardBack";
-import { postUrl } from "./cardUtils";
 import "./PostCardShowcase.css";
 
 interface Props {
@@ -139,22 +138,17 @@ export default function PostCardShowcase({
             <button
               type="button"
               className="post-card-showcase__button"
+              aria-label="Перевернуть"
+              title="Перевернуть"
               onClick={turnOver}
             >
-              ↻ Перевернуть
+              ↻
             </button>
-            <a
-              className="post-card-showcase__button"
-              href={postUrl(post.id)}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Открыть пост ↗
-            </a>
             <button
               type="button"
-              className="post-card-showcase__button post-card-showcase__button--icon"
+              className="post-card-showcase__button"
               aria-label="Закрыть"
+              title="Закрыть"
               onClick={close}
             >
               ✕

@@ -30,7 +30,7 @@ export default function AuthorDetailPage() {
   const unsolvedPosts = useMemo(
     () =>
       (
-        user?.posts.filter((p) => p.role === "author" && !p.is_found) ?? []
+        user?.posts.filter((p) => p.role === "author" && p.waiting) ?? []
       ).sort((a, b) => b.tier - a.tier),
     [user],
   );

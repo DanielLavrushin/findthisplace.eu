@@ -51,7 +51,7 @@ export default function AuthorStats({
     if (authorPosts.length === 0) return null;
 
     const solvedPosts = authorPosts.filter((p) => p.is_found);
-    const unsolvedPosts = authorPosts.filter((p) => !p.is_found);
+    const unsolvedPosts = authorPosts.filter((p) => p.waiting);
 
     // Country stats
     const countryCounts: Record<string, number> = {};

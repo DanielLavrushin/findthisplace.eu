@@ -17,6 +17,28 @@ var tierBounds = []float64{
 	5 * 365 * 24 * 3600,
 }
 
+// d3.ru tags a puzzle with it until someone finds the place
+const notFoundTag = "не найдено"
+
+// waitingExpr is whether a dirty post, with its ftp_posts row unwound at
+// "ftp", is a puzzle /not-found lists: tagged as not found, and not found or
+// found with no place on the map. The pipeline drops the hidden posts itself.
+// Not a missing tag alone: "условно найдено", posts that set no puzzle and
+// posts gone from d3.ru are no one's to find.
+var waitingExpr = bson.M{"$and": bson.A{
+	bson.M{"$in": bson.A{notFoundTag, bson.M{"$ifNull": bson.A{"$tags", bson.A{}}}}},
+	bson.M{"$or": bson.A{
+		bson.M{"$eq": bson.A{"$ftp.is_found", false}},
+		bson.M{"$and": bson.A{
+			bson.M{"$eq": bson.A{"$ftp.is_found", true}},
+			bson.M{"$or": bson.A{
+				bson.M{"$eq": bson.A{bson.M{"$ifNull": bson.A{"$ftp.longitude", 0}}, 0}},
+				bson.M{"$eq": bson.A{bson.M{"$ifNull": bson.A{"$ftp.latitude", 0}}, 0}},
+			}},
+		}},
+	}},
+}}
+
 type notFoundPostResponse struct {
 	Id           int     `json:"id"`
 	Title        string  `json:"title"`
@@ -44,6 +66,8 @@ func (api *API) RegisterPostsApi() {
 func (api *API) handleNotFoundPosts(w http.ResponseWriter, r *http.Request) {
 	hiddenTags, _ := api.settings.GetHiddenTags(r.Context())
 
+	// waitingExpr as queries, the found and the place matched before the join;
+	// keep the two saying the same
 	pipeline := bson.A{
 		bson.M{"$match": bson.M{"$or": bson.A{
 			bson.M{"is_found": false},
@@ -67,7 +91,7 @@ func (api *API) handleNotFoundPosts(w http.ResponseWriter, r *http.Request) {
 			"path":                       "$post",
 			"preserveNullAndEmptyArrays": false,
 		}},
-		bson.M{"$match": bson.M{"post.tags": "не найдено"}},
+		bson.M{"$match": bson.M{"post.tags": notFoundTag}},
 	}
 
 	if len(hiddenTags) > 0 {
@@ -308,7 +332,7 @@ func (api *API) handleProblematicPosts(w http.ResponseWriter, r *http.Request) {
 		bson.M{"$match": bson.M{
 			"$or": bson.A{
 				bson.M{"is_found": true},
-				bson.M{"post.tags": bson.M{"$ne": "не найдено"}},
+				bson.M{"post.tags": bson.M{"$ne": notFoundTag}},
 			},
 		}},
 	}
