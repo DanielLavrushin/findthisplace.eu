@@ -22,6 +22,7 @@ export interface ProblematicPost {
   found_date?: string;
   tags?: string[];
   reasons?: ProblemReason[];
+  comments_count?: number;
 }
 
 async function fetchProblematicPosts(): Promise<ProblematicPost[]> {

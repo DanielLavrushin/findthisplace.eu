@@ -3,13 +3,18 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
+	"slices"
 	"strconv"
 	"time"
 
 	"github.com/findthisplace.eu/dirty"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var tierBounds = []float64{
@@ -68,8 +73,9 @@ type notFoundPostResponse struct {
 	FoundBy      string  `json:"found_by,omitempty"`
 	FoundDate    string  `json:"found_date,omitempty"`
 	// only the admin endpoints fill these in
-	Tags    []string `json:"tags,omitempty"`
-	Reasons []string `json:"reasons,omitempty"`
+	Tags          []string `json:"tags,omitempty"`
+	Reasons       []string `json:"reasons,omitempty"`
+	CommentsCount int      `json:"comments_count,omitempty"`
 }
 
 func (api *API) RegisterPostsApi() {
@@ -77,6 +83,7 @@ func (api *API) RegisterPostsApi() {
 	api.mux.HandleFunc("GET /api/posts/{id}", api.handleGetPost)
 	api.mux.HandleFunc("GET /api/admin/problematic-posts", api.handleProblematicPosts)
 	api.mux.HandleFunc("PATCH /api/admin/posts/{id}/edit", api.handleAdminPostEdit)
+	api.mux.HandleFunc("DELETE /api/admin/posts/{id}", api.handleAdminPostDelete)
 }
 
 func (api *API) handleNotFoundPosts(w http.ResponseWriter, r *http.Request) {
@@ -256,6 +263,7 @@ func (api *API) handleGetPost(w http.ResponseWriter, r *http.Request) {
 			"found_by":       "$foundby.login",
 			"found_date":     1,
 			"tags":           "$post.tags",
+			"comments_count": "$post.comments_count",
 		}},
 	}
 
@@ -280,18 +288,19 @@ func (api *API) handleGetPost(w http.ResponseWriter, r *http.Request) {
 	doc := raw[0]
 	now := time.Now()
 	resp := notFoundPostResponse{
-		Id:           intFromBson(doc["_id"]),
-		Title:        strFromBson(doc["title"]),
-		MainImageURL: strFromBson(doc["main_image_url"]),
-		UserID:       intFromBson(doc["user_id"]),
-		Username:     strFromBson(doc["username"]),
-		Gender:       strFromBson(doc["gender"]),
-		Latitude:     floatFromBson(doc["latitude"]),
-		Longitude:    floatFromBson(doc["longitude"]),
-		FoundByID:    intFromBson(doc["found_by_id"]),
-		FoundBy:      strFromBson(doc["found_by"]),
-		FoundDate:    strFromBson(doc["found_date"]),
-		Tags:         strsFromBson(doc["tags"]),
+		Id:            intFromBson(doc["_id"]),
+		Title:         strFromBson(doc["title"]),
+		MainImageURL:  strFromBson(doc["main_image_url"]),
+		UserID:        intFromBson(doc["user_id"]),
+		Username:      strFromBson(doc["username"]),
+		Gender:        strFromBson(doc["gender"]),
+		Latitude:      floatFromBson(doc["latitude"]),
+		Longitude:     floatFromBson(doc["longitude"]),
+		FoundByID:     intFromBson(doc["found_by_id"]),
+		FoundBy:       strFromBson(doc["found_by"]),
+		FoundDate:     strFromBson(doc["found_date"]),
+		Tags:          strsFromBson(doc["tags"]),
+		CommentsCount: intFromBson(doc["comments_count"]),
 	}
 
 	var foundDate time.Time
@@ -422,7 +431,10 @@ func (api *API) problematicPosts(ctx context.Context) ([]notFoundPostResponse, e
 			"found_by_id":    1,
 			"found_by":       "$foundby.login",
 			"found_date":     1,
+			"latitude":       1,
+			"longitude":      1,
 			"tags":           "$post.tags",
+			"comments_count": "$post.comments_count",
 			"reasons":        1,
 		}},
 		bson.M{"$sort": bson.M{"created": -1}},
@@ -453,17 +465,20 @@ func (api *API) problematicPosts(ctx context.Context) ([]notFoundPostResponse, e
 			continue
 		}
 		resp := notFoundPostResponse{
-			Id:           id,
-			Title:        strFromBson(doc["title"]),
-			MainImageURL: strFromBson(doc["main_image_url"]),
-			UserID:       intFromBson(doc["user_id"]),
-			Username:     strFromBson(doc["username"]),
-			Gender:       strFromBson(doc["gender"]),
-			IsFound:      boolFromBson(doc["is_found"]),
-			FoundByID:    intFromBson(doc["found_by_id"]),
-			FoundBy:      strFromBson(doc["found_by"]),
-			Tags:         strsFromBson(doc["tags"]),
-			Reasons:      strsFromBson(doc["reasons"]),
+			Id:            id,
+			Title:         strFromBson(doc["title"]),
+			MainImageURL:  strFromBson(doc["main_image_url"]),
+			UserID:        intFromBson(doc["user_id"]),
+			Username:      strFromBson(doc["username"]),
+			Gender:        strFromBson(doc["gender"]),
+			IsFound:       boolFromBson(doc["is_found"]),
+			FoundByID:     intFromBson(doc["found_by_id"]),
+			FoundBy:       strFromBson(doc["found_by"]),
+			Latitude:      floatFromBson(doc["latitude"]),
+			Longitude:     floatFromBson(doc["longitude"]),
+			Tags:          strsFromBson(doc["tags"]),
+			Reasons:       strsFromBson(doc["reasons"]),
+			CommentsCount: intFromBson(doc["comments_count"]),
 		}
 		if fd, ok := doc["found_date"].(primitive.DateTime); ok && !fd.Time().IsZero() {
 			resp.FoundDate = fd.Time().UTC().Format(time.RFC3339)
@@ -566,4 +581,128 @@ func (api *API) handleAdminPostEdit(w http.ResponseWriter, r *http.Request) {
 		"id":      id,
 		"updated": update,
 	})
+}
+
+var (
+	errPostNotFound = errors.New("post not found")
+	errPostOnMap    = errors.New("post is found and on the map, so it stays as history")
+	errPostOnD3     = errors.New("post is still on d3.ru")
+)
+
+func (api *API) handleAdminPostDelete(w http.ResponseWriter, r *http.Request) {
+	if !api.requireAdmin(w, r) {
+		return
+	}
+
+	id, err := strconv.Atoi(r.PathValue("id"))
+	if err != nil {
+		http.Error(w, "invalid post id", http.StatusBadRequest)
+		return
+	}
+	uid, _, _ := getAuthCookies(r)
+	adminID, _ := strconv.Atoi(uid)
+
+	comments, err := api.deleteGonePost(r.Context(), id, adminID, dirty.PostGone)
+	switch {
+	case errors.Is(err, errPostNotFound):
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	case errors.Is(err, errPostOnMap), errors.Is(err, errPostOnD3):
+		http.Error(w, err.Error(), http.StatusConflict)
+		return
+	case err != nil:
+		http.Error(w, err.Error(), http.StatusBadGateway)
+		return
+	}
+
+	setJsonHeader(w)
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"id":       id,
+		"comments": comments,
+	})
+}
+
+// deleteGonePost moves a post d3.ru no longer has out of the live collections,
+// with its comments, into deleted_posts, and returns how many comments went
+// with it. Found posts on the map stay as history. The archive copy is written
+// before anything is deleted, and never overwritten, so a failed run can be
+// repeated.
+func (api *API) deleteGonePost(ctx context.Context, id, adminID int, gone func(context.Context, int) (bool, error)) (int, error) {
+	var post, ftpPost bson.M
+	errPost := api.store.DirtyPosts.FindOne(ctx, bson.M{"_id": id}).Decode(&post)
+	errFtp := api.store.FtpPosts.FindOne(ctx, bson.M{"_id": id}).Decode(&ftpPost)
+	for _, err := range []error{errPost, errFtp} {
+		if err != nil && !errors.Is(err, mongo.ErrNoDocuments) {
+			return 0, err
+		}
+	}
+	if post == nil && ftpPost == nil {
+		return 0, errPostNotFound
+	}
+	if boolFromBson(ftpPost["is_found"]) &&
+		floatFromBson(ftpPost["latitude"]) != 0 && floatFromBson(ftpPost["longitude"]) != 0 {
+		return 0, errPostOnMap
+	}
+
+	isGone, err := gone(ctx, id)
+	if err != nil {
+		return 0, fmt.Errorf("could not check the post on d3.ru: %w", err)
+	}
+	if !isGone {
+		return 0, errPostOnD3
+	}
+
+	var comments, ftpComments []bson.M
+	cur, err := api.store.DirtyComments.Find(ctx, bson.M{"post_id": id})
+	if err != nil {
+		return 0, err
+	}
+	if err := cur.All(ctx, &comments); err != nil {
+		return 0, err
+	}
+	commentIDs := make(bson.A, len(comments))
+	for i, c := range comments {
+		commentIDs[i] = c["_id"]
+	}
+	cur, err = api.store.FtpComments.Find(ctx, bson.M{"_id": bson.M{"$in": commentIDs}})
+	if err != nil {
+		return 0, err
+	}
+	if err := cur.All(ctx, &ftpComments); err != nil {
+		return 0, err
+	}
+
+	_, err = api.store.DeletedPosts.UpdateOne(ctx, bson.M{"_id": id}, bson.M{"$setOnInsert": bson.M{
+		"deleted_at":   time.Now(),
+		"deleted_by":   adminID,
+		"post":         post,
+		"ftp_post":     ftpPost,
+		"comments":     comments,
+		"ftp_comments": ftpComments,
+	}}, options.Update().SetUpsert(true))
+	if err != nil {
+		return 0, err
+	}
+
+	if _, err := api.store.FtpComments.DeleteMany(ctx, bson.M{"_id": bson.M{"$in": commentIDs}}); err != nil {
+		return 0, err
+	}
+	if _, err := api.store.DirtyComments.DeleteMany(ctx, bson.M{"post_id": id}); err != nil {
+		return 0, err
+	}
+	if _, err := api.store.FtpPosts.DeleteOne(ctx, bson.M{"_id": id}); err != nil {
+		return 0, err
+	}
+	if _, err := api.store.DirtyPosts.DeleteOne(ctx, bson.M{"_id": id}); err != nil {
+		return 0, err
+	}
+
+	if hidden, err := api.settings.GetHiddenNotFoundPosts(ctx); err == nil && slices.Contains(hidden, id) {
+		hidden = slices.DeleteFunc(hidden, func(h int) bool { return h == id })
+		if err := api.settings.SetHiddenNotFoundPosts(ctx, hidden); err != nil {
+			return 0, err
+		}
+	}
+	return len(comments), nil
 }

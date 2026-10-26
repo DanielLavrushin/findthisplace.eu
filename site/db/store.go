@@ -20,6 +20,7 @@ type DB struct {
 	FtpComments   *mongo.Collection
 	FtpUsers      *mongo.Collection
 	FtpSettings   *mongo.Collection
+	DeletedPosts  *mongo.Collection
 }
 
 func Connect(ctx context.Context, dbName string) (*DB, error) {
@@ -57,5 +58,6 @@ func Connect(ctx context.Context, dbName string) (*DB, error) {
 		FtpComments:   db.Collection("ftp_comments"),
 		FtpUsers:      db.Collection("ftp_users"),
 		FtpSettings:   db.Collection("ftp_settings"),
+		DeletedPosts:  db.Collection("deleted_posts"),
 	}, nil
 }

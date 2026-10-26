@@ -5,4 +5,5 @@ const (
 	ApiPostsFullEndpoint   = ApiBaseEndpoint + "/api/posts2"
 	ApiPostsLatestEndpoint = ApiBaseEndpoint + "/api/domains/findthisplace/feed?sorting=date_changed"
 	ApiCommentsEndpoint    = ApiBaseEndpoint + "/api/posts/%d/comments"
+	ApiPostEndpoint        = ApiBaseEndpoint + "/api/posts/%d/"
 )

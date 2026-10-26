@@ -13,11 +13,17 @@ import {
   Chip,
   IconButton,
   Tooltip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import {
   MapContainer,
   TileLayer,
@@ -30,6 +36,7 @@ import "leaflet/dist/leaflet.css";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { ProblematicPost } from "./useProblematicPosts";
 import markerIcon from "../../../assets/marker.png";
+import { plural } from "../../utils/plural";
 
 interface PostEditorProps {
   post: ProblematicPost;
@@ -229,10 +236,24 @@ async function updatePost(id: number, data: PostUpdateData): Promise<void> {
   }
 }
 
+async function deletePost(id: number): Promise<void> {
+  const res = await fetch(`/api/admin/posts/${id}`, { method: "DELETE" });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || "Не удалось удалить пост");
+  }
+}
+
+// d3.ru answers 404 once the post, or its author's account, is deleted
+class PostGoneError extends Error {}
+
 async function fetchComments(postId: number): Promise<Comment[]> {
   const res = await fetch(
     `https://findthisplace.d3.ru/api/posts/${postId}/comments`,
   );
+  if (res.status === 404) {
+    throw new PostGoneError();
+  }
   if (!res.ok) {
     throw new Error("Не удалось загрузить комментарии");
   }
@@ -283,6 +304,8 @@ export default function PostEditor({
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentsError, setCommentsError] = useState("");
   const [selectedComment, setSelectedComment] = useState<Comment | null>(null);
+  const [goneFromD3, setGoneFromD3] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
     if (!initialPost.title && !initialPost.username) {
@@ -315,12 +338,18 @@ export default function PostEditor({
     setParseError("");
     setSelectedComment(null);
     setCommentsError("");
+    setGoneFromD3(false);
+    setConfirmDelete(false);
 
     // Fetch comments
     setCommentsLoading(true);
     fetchComments(initialPost.id)
       .then(setComments)
-      .catch((err) => setCommentsError(err.message))
+      .catch((err) =>
+        err instanceof PostGoneError
+          ? setGoneFromD3(true)
+          : setCommentsError(err.message),
+      )
       .finally(() => setCommentsLoading(false));
   }, [initialPost.id]);
 
@@ -333,6 +362,19 @@ export default function PostEditor({
       onClose();
     },
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deletePost(post.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["admin", "problematic-posts"],
+      });
+      onClose();
+    },
+  });
+
+  // A find on the map is history even after d3.ru loses the post
+  const keptAsHistory = post.is_found && !!post.latitude && !!post.longitude;
 
   const handleParseUrl = () => {
     setParseError("");
@@ -434,6 +476,32 @@ export default function PostEditor({
           Назад к списку
         </Button>
       </Box>
+
+      {goneFromD3 && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 3 }}
+          action={
+            !keptAsHistory && (
+              <Button
+                color="error"
+                variant="outlined"
+                size="small"
+                startIcon={<DeleteOutlineIcon />}
+                onClick={() => setConfirmDelete(true)}
+                sx={{ whiteSpace: "nowrap" }}
+              >
+                Удалить из базы
+              </Button>
+            )
+          }
+        >
+          Пост удалён с d3.ru.{" "}
+          {keptAsHistory
+            ? "Место найдено и стоит на карте, поэтому пост остаётся в базе как история."
+            : "Найти место уже никто не сможет, поэтому пост можно убрать из базы."}
+        </Alert>
+      )}
 
       <Box sx={{ display: "flex", gap: 3, flexWrap: "wrap" }}>
         {/* Left side: Post info and inputs */}
@@ -652,7 +720,9 @@ export default function PostEditor({
 
         {!commentsLoading && !commentsError && comments.length === 0 && (
           <Typography variant="body2" color="text.secondary">
-            Комментариев нет
+            {goneFromD3
+              ? "Комментарии недоступны: пост удалён с d3.ru"
+              : "Комментариев нет"}
           </Typography>
         )}
 
@@ -738,6 +808,52 @@ export default function PostEditor({
           </Paper>
         )}
       </Box>
+
+      <Dialog
+        open={confirmDelete}
+        onClose={() => !deleteMutation.isPending && setConfirmDelete(false)}
+      >
+        <DialogTitle>Удалить пост #{post.id} из базы?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            «{post.title || "Без названия"}»
+            {post.username && `, автор ${post.username}`}
+            {post.comments_count
+              ? `, ${plural(post.comments_count, "комментарий")}`
+              : ""}
+            . Пост и его комментарии пропадут с сайта, а их копия сохранится в
+            архиве удалённых постов.
+          </DialogContentText>
+          {deleteMutation.isError && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {(deleteMutation.error as Error).message}
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setConfirmDelete(false)}
+            disabled={deleteMutation.isPending}
+          >
+            Отмена
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => deleteMutation.mutate()}
+            disabled={deleteMutation.isPending}
+            startIcon={
+              deleteMutation.isPending ? (
+                <CircularProgress size={16} />
+              ) : (
+                <DeleteOutlineIcon />
+              )
+            }
+          >
+            Удалить
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -3,7 +3,9 @@ package dirty
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
+	"net/http"
 	"net/url"
 	"regexp"
 	"strconv"
@@ -104,4 +106,28 @@ func (p *DirtyPost) UnmarshalJSON(data []byte) error {
 // IsFound reports whether moderators marked the post found with [НАЙДЕНО].
 func (p *DirtyPost) IsFound() bool {
 	return foundMarker.MatchString(p.Text)
+}
+
+// PostGone reports whether d3.ru answers 404 for the post, as it does once the
+// post or its author's account is deleted. Any answer but 404 or 200 is an
+// error, so an outage is never taken for a deletion.
+func PostGone(ctx context.Context, id int) (bool, error) {
+	u := fmt.Sprintf(ApiPostEndpoint, id)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
+	if err != nil {
+		return false, err
+	}
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return false, err
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusNotFound:
+		return true, nil
+	case http.StatusOK:
+		return false, nil
+	}
+	return false, fmt.Errorf("Get %q: unexpected status %s", u, resp.Status)
 }
