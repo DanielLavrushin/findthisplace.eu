@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up the findthisplace database every night
+
+[Timer]
+OnCalendar=*-*-* 04:30
+# a night the Pi was off is made up at the next boot
+Persistent=true
+
+[Install]
+WantedBy=timers.target

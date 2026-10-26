@@ -42,6 +42,8 @@ export interface GrabberStatus {
   last_full_run_at?: string;
   next_run_at: string;
   next_run_full: boolean;
+  last_backup_at?: string;
+  last_backup_size?: number;
 }
 
 // The server writes at least every 15s.

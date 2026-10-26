@@ -15,6 +15,12 @@ func (m *Manager) GetLastFullGrabberTime(ctx context.Context) (time.Time, error)
 func (m *Manager) GetLastGrabberStatus(ctx context.Context) (string, error) {
 	return Get[string](ctx, m, LastGrabberStatus)
 }
+func (m *Manager) GetLastBackupTime(ctx context.Context) (time.Time, error) {
+	return Get[time.Time](ctx, m, LastBackupTime)
+}
+func (m *Manager) GetLastBackupSize(ctx context.Context) (int64, error) {
+	return Get[int64](ctx, m, LastBackupSize)
+}
 func (m *Manager) GetHiddenNotFoundPosts(ctx context.Context) ([]int, error) {
 	return Get[[]int](ctx, m, HiddenNotFoundPosts)
 }

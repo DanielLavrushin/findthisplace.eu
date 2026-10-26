@@ -34,6 +34,24 @@ function formatTime(iso?: string): string {
   return iso ? new Date(iso).toLocaleString("ru-RU") : "—";
 }
 
+// The backup runs nightly; a day and a half without one means a night failed.
+const BACKUP_STALE_MS = 36 * 3600 * 1000;
+
+function BackupFact({ status, now }: { status: GrabberStatus; now: number }) {
+  const at = status.last_backup_at;
+  const stale = !at || now - Date.parse(at) > BACKUP_STALE_MS;
+  const size = (status.last_backup_size ?? 0) / (1024 * 1024);
+  return (
+    <Fact label="Последний бэкап базы">
+      <Box component="span" sx={{ color: stale ? "warning.main" : undefined }}>
+        {at
+          ? `${formatTime(at)} · ${size.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} МБ`
+          : "ещё не было"}
+      </Box>
+    </Fact>
+  );
+}
+
 function formatDuration(ms: number): string {
   const s = Math.max(0, Math.round(ms / 1000));
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -239,6 +257,7 @@ export default function GrabberPanel() {
         </Fact>
         <Fact label="Последнее полное обновление">{formatTime(status.last_full_run_at)}</Fact>
         {!status.running && <Fact label="Следующий запуск">{nextRunText(status, now)}</Fact>}
+        <BackupFact status={status} now={now} />
       </Box>
 
       <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mb: 3 }}>

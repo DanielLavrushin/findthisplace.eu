@@ -7,6 +7,10 @@ const (
 	LastFullGrabberTime = "last_full_grabber_time"
 	LastGrabberStatus   = "last_grabber_status"
 
+	// written by the nightly backup script (deploy/backup.sh)
+	LastBackupTime = "last_backup_time"
+	LastBackupSize = "last_backup_size"
+
 	HiddenNotFoundPosts = "hidden_not_found_posts"
 	HiddenTags          = "hidden_tags"
 	AdminIds            = "admin_ids"

@@ -42,6 +42,9 @@ type Status struct {
 	LastFullRunAt *time.Time `json:"last_full_run_at,omitempty"`
 	NextRunAt     time.Time  `json:"next_run_at"`
 	NextRunFull   bool       `json:"next_run_full"`
+	// The nightly database backup, which the admin panel shows beside the runs.
+	LastBackupAt   *time.Time `json:"last_backup_at,omitempty"`
+	LastBackupSize int64      `json:"last_backup_size,omitempty"`
 }
 
 func StartBackground(ctx context.Context, store *db.DB, sm *settings.Manager) *Grabber {
@@ -115,6 +118,11 @@ func (g *Grabber) Status(ctx context.Context) Status {
 	if t, err := g.sm.GetLastFullGrabberTime(ctx); err == nil {
 		s.LastFullRunAt = &t
 		s.NextRunFull = s.NextRunAt.Sub(t) >= fullRunThreshold
+	}
+
+	if t, err := g.sm.GetLastBackupTime(ctx); err == nil {
+		s.LastBackupAt = &t
+		s.LastBackupSize, _ = g.sm.GetLastBackupSize(ctx)
 	}
 	return s
 }

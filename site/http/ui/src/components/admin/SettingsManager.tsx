@@ -24,7 +24,13 @@ import { useSettings, useUpdateSetting, Setting } from "./useSettings";
 const PROTECTED_ADMIN_ID = 25377;
 
 // Shown on the grabber tab instead.
-const GRABBER_SETTINGS = ["last_grabber_time", "last_grabber_status", "last_full_grabber_time"];
+const GRABBER_SETTINGS = [
+  "last_grabber_time",
+  "last_grabber_status",
+  "last_full_grabber_time",
+  "last_backup_time",
+  "last_backup_size",
+];
 
 const SETTING_LABELS: Record<string, string> = {
   hidden_not_found_posts: "Скрытые ненайденные посты",

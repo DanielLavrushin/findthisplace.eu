@@ -13,6 +13,9 @@ BUILDFLAGS := -trimpath
 
 # ssh host of the production Pi
 PI ?= raspberry
+# what deploy_units installs there
+PI_SCRIPTS := update.sh backup.sh
+PI_UNITS := findthisplace-update.path findthisplace-update.service findthisplace-backup.service findthisplace-backup.timer
 
 
 .PHONY: mongo_start build_rpi5 build deploy_units
@@ -28,12 +31,14 @@ mongo_start:
 	$(DC) down
 	$(DC) up --pull always --build -d
 
-# Install the self-update script and its systemd units from deploy/ on the Pi
+# Install the Pi-side scripts from deploy/, the self-update and the nightly
+# database backup, with their systemd units
 deploy_units:
-	scp deploy/update.sh deploy/findthisplace-update.path deploy/findthisplace-update.service $(PI):
+	scp $(addprefix deploy/,$(PI_SCRIPTS) $(PI_UNITS)) $(PI):
 	ssh $(PI) 'sudo install -m 755 update.sh /usr/local/sbin/findthisplace-update \
-		&& sudo install -m 644 findthisplace-update.path findthisplace-update.service /etc/systemd/system/ \
-		&& rm update.sh findthisplace-update.path findthisplace-update.service \
+		&& sudo install -m 755 backup.sh /usr/local/bin/findthisplace-backup \
+		&& sudo install -m 644 $(PI_UNITS) /etc/systemd/system/ \
+		&& rm $(PI_SCRIPTS) $(PI_UNITS) \
 		&& sudo systemctl daemon-reload \
-		&& sudo systemctl enable findthisplace-update.path \
-		&& sudo systemctl restart findthisplace-update.path'
+		&& sudo systemctl enable findthisplace-update.path findthisplace-backup.timer \
+		&& sudo systemctl restart findthisplace-update.path findthisplace-backup.timer'

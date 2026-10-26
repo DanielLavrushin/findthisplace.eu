@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up the findthisplace database
+After=docker.service
+
+[Service]
+Type=oneshot
+# daniel is in the docker group, and the dumps belong in his home to copy off the Pi
+User=daniel
+ExecStart=/usr/local/bin/findthisplace-backup
+TimeoutStartSec=15min
