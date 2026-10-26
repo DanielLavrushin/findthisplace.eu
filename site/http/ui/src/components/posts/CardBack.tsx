@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import type { NotFoundPost } from "./useNotFoundPosts";
 import MiniMap from "./MiniMap";
+import { useAuth } from "../../contexts/AuthContext";
 import { plural } from "../../utils/plural";
 import {
   countryName,
@@ -67,15 +68,7 @@ function Searching({ post }: Readonly<{ post: NotFoundPost }>) {
       <div className="post-card__back-note">
         ищем уже {days.toLocaleString("ru-RU")} {plural(days, "день", true)}
       </div>
-      <a
-        className="post-card__back-link"
-        href={postUrl(post.id)}
-        target="_blank"
-        rel="noopener noreferrer"
-        onClick={stop}
-      >
-        Помочь найти ↗
-      </a>
+      <PostLinks post={post} label="Помочь найти ↗" />
     </>
   );
 }
@@ -143,6 +136,19 @@ function Found({
           <dd>{date}</dd>
         </div>
       </dl>
+      <PostLinks post={post} label="Открыть пост ↗" />
+    </>
+  );
+}
+
+/** The post on d3.ru, and for admins its page in the admin panel. */
+function PostLinks({
+  post,
+  label,
+}: Readonly<{ post: NotFoundPost; label: string }>) {
+  const { isAdmin } = useAuth();
+  return (
+    <div className="post-card__back-links">
       <a
         className="post-card__back-link"
         href={postUrl(post.id)}
@@ -150,8 +156,17 @@ function Found({
         rel="noopener noreferrer"
         onClick={stop}
       >
-        Открыть пост ↗
+        {label}
       </a>
-    </>
+      {isAdmin && (
+        <Link
+          className="post-card__back-link post-card__back-link--admin"
+          to={`/admin/posts/${post.id}`}
+          onClick={stop}
+        >
+          ✎ Править
+        </Link>
+      )}
+    </div>
   );
 }

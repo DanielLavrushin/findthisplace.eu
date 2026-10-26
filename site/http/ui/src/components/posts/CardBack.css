@@ -120,8 +120,15 @@
   pointer-events: auto;
 }
 
-.post-card__back-link {
+.post-card__back-links {
   margin-top: 1cqw;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2cqw;
+}
+
+.post-card__back-link {
   padding: 1.4cqw 4.4cqw;
   border: 1.5px solid hsla(30, 30%, 15%, 0.55);
   border-radius: 999px;
@@ -136,6 +143,12 @@
 
 .post-card__back-link:hover {
   background: hsla(0, 0%, 100%, 0.6);
+}
+
+/* only admins see it: pencilled in, not printed with the card */
+.post-card__back-link--admin {
+  border-style: dashed;
+  color: var(--ink-soft);
 }
 
 /* ── mini map of the spot ── */
