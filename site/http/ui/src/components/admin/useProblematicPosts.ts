@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
+export type ProblemReason =
+  | "no_coords"
+  | "no_place_tags"
+  | "stale_not_found"
+  | "no_status_tag";
+
 export interface ProblematicPost {
   id: number;
   title: string;
@@ -15,6 +21,7 @@ export interface ProblematicPost {
   found_by?: string;
   found_date?: string;
   tags?: string[];
+  reasons?: ProblemReason[];
 }
 
 async function fetchProblematicPosts(): Promise<ProblematicPost[]> {
