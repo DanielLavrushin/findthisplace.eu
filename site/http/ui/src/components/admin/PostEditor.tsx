@@ -11,10 +11,13 @@ import {
   Paper,
   Divider,
   Chip,
+  IconButton,
+  Tooltip,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import {
   MapContainer,
   TileLayer,
@@ -347,6 +350,12 @@ export default function PostEditor({
     setLongitude(lng.toFixed(6));
   };
 
+  // Some imported posts have lat and lng stored the wrong way round
+  const handleSwapCoords = () => {
+    setLatitude(longitude);
+    setLongitude(latitude);
+  };
+
   const handleSave = () => {
     const lat = parseFloat(latitude);
     const lng = parseFloat(longitude);
@@ -403,8 +412,12 @@ export default function PostEditor({
   const parsedLat = parseFloat(latitude);
   const parsedLng = parseFloat(longitude);
   const hasValidCoords = !isNaN(parsedLat) && !isNaN(parsedLng);
+  // A post that already has a finder can be saved with new coordinates alone
   const isValid =
-    latitude && longitude && hasValidCoords && selectedComment !== null;
+    latitude &&
+    longitude &&
+    hasValidCoords &&
+    (selectedComment !== null || !!post.found_by_id);
 
   return (
     <Box>
@@ -492,7 +505,7 @@ export default function PostEditor({
           <Typography variant="subtitle2" sx={{ mb: 1 }}>
             Координаты
           </Typography>
-          <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
             <TextField
               label="Широта (Lat)"
               size="small"
@@ -503,6 +516,18 @@ export default function PostEditor({
               type="number"
               inputProps={{ step: "any" }}
             />
+            <Tooltip title="Поменять широту и долготу местами">
+              <span>
+                <IconButton
+                  size="small"
+                  onClick={handleSwapCoords}
+                  disabled={!latitude && !longitude}
+                  aria-label="Поменять широту и долготу местами"
+                >
+                  <SwapHorizIcon />
+                </IconButton>
+              </span>
+            </Tooltip>
             <TextField
               label="Долгота (Lng)"
               size="small"
