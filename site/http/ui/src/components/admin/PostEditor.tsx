@@ -472,6 +472,13 @@ export default function PostEditor({
                 Открыть на d3.ru
                 <OpenInNewIcon sx={{ fontSize: 14 }} />
               </Link>
+              {post.tags && post.tags.length > 0 && (
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mt: 1 }}>
+                  {post.tags.map((tag) => (
+                    <Chip key={tag} label={tag} size="small" variant="outlined" />
+                  ))}
+                </Box>
+              )}
             </Box>
           </Box>
 

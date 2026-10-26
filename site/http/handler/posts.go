@@ -54,6 +54,8 @@ type notFoundPostResponse struct {
 	FoundByID    int     `json:"found_by_id,omitempty"`
 	FoundBy      string  `json:"found_by,omitempty"`
 	FoundDate    string  `json:"found_date,omitempty"`
+	// only the admin endpoints fill it in
+	Tags []string `json:"tags,omitempty"`
 }
 
 func (api *API) RegisterPostsApi() {
@@ -239,6 +241,7 @@ func (api *API) handleGetPost(w http.ResponseWriter, r *http.Request) {
 			"found_by_id":    1,
 			"found_by":       "$foundby.login",
 			"found_date":     1,
+			"tags":           "$post.tags",
 		}},
 	}
 
@@ -274,6 +277,7 @@ func (api *API) handleGetPost(w http.ResponseWriter, r *http.Request) {
 		FoundByID:    intFromBson(doc["found_by_id"]),
 		FoundBy:      strFromBson(doc["found_by"]),
 		FoundDate:    strFromBson(doc["found_date"]),
+		Tags:         strsFromBson(doc["tags"]),
 	}
 
 	var foundDate time.Time
@@ -378,6 +382,7 @@ func (api *API) handleProblematicPosts(w http.ResponseWriter, r *http.Request) {
 			"found_by_id":    1,
 			"found_by":       "$foundby.login",
 			"found_date":     1,
+			"tags":           "$post.tags",
 		}},
 		bson.M{"$sort": bson.M{"created": -1}},
 	)
@@ -418,6 +423,7 @@ func (api *API) handleProblematicPosts(w http.ResponseWriter, r *http.Request) {
 			IsFound:      boolFromBson(doc["is_found"]),
 			FoundByID:    intFromBson(doc["found_by_id"]),
 			FoundBy:      strFromBson(doc["found_by"]),
+			Tags:         strsFromBson(doc["tags"]),
 		}
 		if fd, ok := doc["found_date"].(primitive.DateTime); ok && !fd.Time().IsZero() {
 			resp.FoundDate = fd.Time().UTC().Format(time.RFC3339)

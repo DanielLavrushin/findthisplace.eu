@@ -179,6 +179,20 @@ func strFromBson(v interface{}) string {
 	return ""
 }
 
+func strsFromBson(v interface{}) []string {
+	arr, ok := v.(primitive.A)
+	if !ok {
+		return nil
+	}
+	out := make([]string, 0, len(arr))
+	for _, item := range arr {
+		if s, ok := item.(string); ok {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 func floatFromBson(v interface{}) float64 {
 	switch n := v.(type) {
 	case float64:

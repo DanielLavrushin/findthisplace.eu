@@ -14,6 +14,7 @@ export interface ProblematicPost {
   found_by_id?: number;
   found_by?: string;
   found_date?: string;
+  tags?: string[];
 }
 
 async function fetchProblematicPosts(): Promise<ProblematicPost[]> {
