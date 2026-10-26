@@ -1,0 +1,11 @@
+[Unit]
+Description=Copy the findthisplace database backups to Google Drive
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+# the rclone remote lives in daniel's config, next to the dumps it uploads
+User=daniel
+ExecStart=/usr/local/bin/findthisplace-backup-upload
+TimeoutStartSec=30min

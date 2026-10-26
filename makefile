@@ -14,8 +14,9 @@ BUILDFLAGS := -trimpath
 # ssh host of the production Pi
 PI ?= raspberry
 # what deploy_units installs there
-PI_SCRIPTS := update.sh backup.sh
-PI_UNITS := findthisplace-update.path findthisplace-update.service findthisplace-backup.service findthisplace-backup.timer
+PI_SCRIPTS := update.sh backup.sh backup-upload.sh
+PI_UNITS := findthisplace-update.path findthisplace-update.service findthisplace-backup.service \
+	findthisplace-backup.timer findthisplace-backup-upload.service
 
 
 .PHONY: mongo_start build_rpi5 build deploy_units
@@ -37,6 +38,7 @@ deploy_units:
 	scp $(addprefix deploy/,$(PI_SCRIPTS) $(PI_UNITS)) $(PI):
 	ssh $(PI) 'sudo install -m 755 update.sh /usr/local/sbin/findthisplace-update \
 		&& sudo install -m 755 backup.sh /usr/local/bin/findthisplace-backup \
+		&& sudo install -m 755 backup-upload.sh /usr/local/bin/findthisplace-backup-upload \
 		&& sudo install -m 644 $(PI_UNITS) /etc/systemd/system/ \
 		&& rm $(PI_SCRIPTS) $(PI_UNITS) \
 		&& sudo systemctl daemon-reload \

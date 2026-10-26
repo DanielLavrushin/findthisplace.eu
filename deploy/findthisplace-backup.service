@@ -1,6 +1,7 @@
 [Unit]
 Description=Back up the findthisplace database
 After=docker.service
+OnSuccess=findthisplace-backup-upload.service
 
 [Service]
 Type=oneshot
