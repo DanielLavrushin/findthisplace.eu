@@ -12,6 +12,10 @@ const (
 	AdminIds            = "admin_ids"
 )
 
+// SuperAdminId is the site owner's d3.ru account. It can't be removed from
+// admin_ids, so there is always an admin who can put the others back.
+const SuperAdminId = 25377
+
 type Manager struct {
 	coll *mongo.Collection
 }

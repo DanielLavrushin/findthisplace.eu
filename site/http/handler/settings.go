@@ -2,6 +2,8 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 
@@ -64,10 +66,39 @@ func (api *API) handleUpdateSetting(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := checkSetting(&req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
 	if err := settings.Set(r.Context(), api.settings, req.Name, req.Value); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// checkSetting refuses an admin_ids value that would lock admins out: it
+// must be a list of user ids, and the super admin has to stay on it. A value
+// the admin check can't read would leave the site with no admins at all.
+func checkSetting(s *settings.Setting) error {
+	if s.Name != settings.AdminIds {
+		return nil
+	}
+
+	raw, err := json.Marshal(s.Value)
+	if err != nil {
+		return err
+	}
+	var ids []int
+	if err := json.Unmarshal(raw, &ids); err != nil {
+		return errors.New("admin_ids must be a list of user ids")
+	}
+	if !slices.Contains(ids, settings.SuperAdminId) {
+		return fmt.Errorf("admin %d can't be removed", settings.SuperAdminId)
+	}
+
+	s.Value = ids
+	return nil
 }

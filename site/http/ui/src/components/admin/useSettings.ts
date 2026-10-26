@@ -5,7 +5,8 @@ export interface Setting {
   value: unknown;
 }
 
-// Protected admin ID that cannot be removed
+// Protected admin ID that cannot be removed; the server refuses it too
+// (settings.SuperAdminId)
 const PROTECTED_ADMIN_ID = 25377;
 
 async function fetchSettings(): Promise<Setting[]> {
@@ -28,7 +29,10 @@ async function updateSetting(setting: Setting): Promise<void> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(setting),
   });
-  if (!res.ok) throw new Error(`Failed to update setting: ${res.status}`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `Failed to update setting: ${res.status}`);
+  }
 }
 
 // not ["settings"]: that's the footer's public subset
