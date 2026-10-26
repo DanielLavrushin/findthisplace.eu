@@ -5,8 +5,18 @@ import (
 	"encoding/json"
 	"log"
 	"net/url"
+	"regexp"
 	"strconv"
 )
+
+var foundMarker = regexp.MustCompile(`(?i)\[НАЙДЕНО]`)
+
+// StatusTags describe where a puzzle stands rather than where it is.
+var StatusTags = map[string]bool{
+	"не найдено":      true,
+	"условно найдено": true,
+	"найдено":         true,
+}
 
 type DirtyPostAlias DirtyPost
 
@@ -89,4 +99,9 @@ func (p *DirtyPost) UnmarshalJSON(data []byte) error {
 	}
 
 	return nil
+}
+
+// IsFound reports whether moderators marked the post found with [НАЙДЕНО].
+func (p *DirtyPost) IsFound() bool {
+	return foundMarker.MatchString(p.Text)
 }

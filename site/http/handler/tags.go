@@ -11,6 +11,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/findthisplace.eu/dirty"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -41,11 +42,7 @@ func init() {
 }
 
 // tags on a puzzle's state, not its place: never related to anything
-var statusTags = map[string]bool{
-	"не найдено":      true,
-	"условно найдено": true,
-	"найдено":         true,
-}
+var statusTags = dirty.StatusTags
 
 // tagSlug turns a tag into its URL segment: "saint petersburg" →
 // "saint-petersburg", "Cote D"Ivoire" → "cote-d-ivoire"; Cyrillic stays.

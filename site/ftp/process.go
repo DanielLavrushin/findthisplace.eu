@@ -3,7 +3,6 @@ package ftp
 import (
 	"context"
 	"log"
-	"regexp"
 
 	"github.com/findthisplace.eu/db"
 	"github.com/findthisplace.eu/dirty"
@@ -11,8 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
-
-var foundTag = regexp.MustCompile(`(?i)\[НАЙДЕНО]`)
 
 // Progress hears what Process is working on, for the admin panel.
 type Progress interface {
@@ -72,7 +69,7 @@ func processPosts(ctx context.Context, store *db.DB, postIDs []int, progress Pro
 
 		fp := &FtpPost{
 			Id:      dp.Id,
-			IsFound: foundTag.MatchString(dp.Text),
+			IsFound: dp.IsFound(),
 		}
 
 		if fp.IsFound {
