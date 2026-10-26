@@ -3,4 +3,6 @@ Description=Update findthisplace binary
 
 [Service]
 Type=oneshot
-ExecStart=/var/www/findthisplace.eu/update.sh
+ExecStart=/usr/local/sbin/findthisplace-update
+# oneshot units never time out by default; a stalled download would block every later trigger
+TimeoutStartSec=10min
